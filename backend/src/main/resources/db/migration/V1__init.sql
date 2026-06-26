@@ -1,3 +1,6 @@
-CREATE TABLE test (
-    id SERIAL PRIMARY KEY
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
 );
