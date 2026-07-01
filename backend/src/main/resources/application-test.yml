@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/sliceofpie_test
+    username: test_user
+    password: test_password
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+
+jwt:
+  secret: dev-secret-key-super-long-for-sure-test-secret-12345679
+  expiration: 86400000
+
+server:
+  port: 8080

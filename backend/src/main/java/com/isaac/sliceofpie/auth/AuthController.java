@@ -3,6 +3,7 @@ package com.isaac.sliceofpie.auth;
 import com.isaac.sliceofpie.auth.AuthDtos.RegisterRequest;
 import com.isaac.sliceofpie.auth.AuthDtos.RegisterResponse;
 import com.isaac.sliceofpie.auth.AuthDtos.LoginRequest;
+import com.isaac.sliceofpie.auth.AuthDtos.LoginResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,10 +28,10 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Void> login(@RequestBody LoginRequest req) {
-        authService.login(
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest req) {
+        String token = authService.login(
                 req.username(),
                 req.password());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new LoginResponse(token));
     }
 }

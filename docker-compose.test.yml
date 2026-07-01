@@ -1,0 +1,12 @@
+services:
+  db:
+    image: postgres:16
+    container_name: sliceofpie-test-db
+    environment:
+      POSTGRES_DB: sliceofpie_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data

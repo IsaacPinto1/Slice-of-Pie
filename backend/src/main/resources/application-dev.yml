@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sliceofpie
+    username: dev_user
+    password: password
+
+jwt:
+  secret: dev-secret-key-super-long-for-sure-12345679
+  expiration: 86400000
+
+logging:
+  level:
+    org.springframework.security: DEBUG
