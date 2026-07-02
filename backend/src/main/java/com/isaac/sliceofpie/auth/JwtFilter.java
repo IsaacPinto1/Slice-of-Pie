@@ -31,10 +31,6 @@ public class JwtFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
-
-        System.out.println("Method = " + request.getMethod());
-        System.out.println("Header = " + request.getHeader("Authorization"));   
-
         if (request.getServletPath().startsWith("/auth")) {
             filterChain.doFilter(request, response);
             return;
@@ -51,12 +47,9 @@ public class JwtFilter extends OncePerRequestFilter {
         try {
             String username = jwtService.extractUsername(token);
 
-            System.out.println("Username = " + username);
             User user = userRepository.findByUsername(username).orElse(null);
-            System.out.println("User = " + user);
 
             if (user != null) {
-                System.out.println("Setting authentication");
                 UserPrincipal principal = new UserPrincipal(user.getId(), user.getUsername());
                 UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(principal, null, List.of());
