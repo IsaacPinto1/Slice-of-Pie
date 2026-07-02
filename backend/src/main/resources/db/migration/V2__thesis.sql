@@ -6,7 +6,7 @@ CREATE TABLE thesis (
 
     content TEXT NOT NULL,
 
-    created_at TIMESTAMP NOT NULL, 
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(), 
     updated_at TIMESTAMP NOT NULL,
 
     CONSTRAINT fk_thesis_user
