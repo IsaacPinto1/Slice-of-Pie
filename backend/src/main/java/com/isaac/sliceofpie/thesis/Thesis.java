@@ -21,15 +21,22 @@ public class Thesis {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", insertable = false, updatable = false)
     private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    public Thesis() {}
+
+    public Thesis(Long userId, String ticker, String content) {
+        this.userId = userId;
+        this.ticker = ticker;
+        this.content = content;
+    }
+
     @PrePersist
     public void onCreate() {
-        this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
@@ -38,7 +45,6 @@ public class Thesis {
         this.updatedAt = Instant.now();
     }
 
-    // getters/setters
     public Long getId() { return id; }
     public Long getUserId() { return userId; }
     public String getTicker() { return ticker; }

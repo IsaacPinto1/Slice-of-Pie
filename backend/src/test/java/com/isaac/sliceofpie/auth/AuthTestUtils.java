@@ -18,31 +18,6 @@ public final class AuthTestUtils {
 
     public static String registerAndLogin(
             WebTestClient client,
-            String password) {
-        
-        String username = uniqueUsername();
-
-        client.post()
-                .uri("/auth/register")
-                .bodyValue(new RegisterRequest(username, password))
-                .exchange()
-                .expectStatus().isCreated();
-
-        LoginResponse response = client.post()
-                .uri("/auth/login")
-                .bodyValue(new LoginRequest(username, password))
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(LoginResponse.class)
-                .returnResult()
-                .getResponseBody();
-
-        assertNotNull(response);
-
-        return response.token();
-    }
-    public static String registerAndLogin(
-            WebTestClient client,
             String username,
             String password) {
 

@@ -1,26 +1,18 @@
 package com.isaac.sliceofpie.thesis;
 
 import org.springframework.stereotype.Service;
-import com.isaac.sliceofpie.users.UserRepository;
 
 
 @Service
 public class ThesisService {
 
     private final ThesisRepository thesisRepository;
-    private final UserRepository userRepository;
 
-    public ThesisService(ThesisRepository thesisRepository,
-                         UserRepository userRepository) {
+    public ThesisService(ThesisRepository thesisRepository) {
         this.thesisRepository = thesisRepository;
-        this.userRepository = userRepository;
     }
 
-    public Thesis upsert(String username, String ticker, String content) {
-
-        Long userId = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"))
-                .getId();
+    public Thesis upsert(Long userId, String ticker, String content) {
 
         return thesisRepository.findByUserIdAndTicker(userId, ticker)
                 .map(existing -> {
@@ -36,11 +28,7 @@ public class ThesisService {
                 });
     }
 
-    public Thesis get(String username, String ticker) {
-        Long userId = userRepository.findByUsername(username)
-                .orElseThrow()
-                .getId();
-
+    public Thesis get(Long userId, String ticker) {
         return thesisRepository.findByUserIdAndTicker(userId, ticker)
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
