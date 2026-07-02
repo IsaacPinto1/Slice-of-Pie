@@ -1,6 +1,7 @@
 package com.isaac.sliceofpie.thesis;
 
 import com.isaac.sliceofpie.auth.AuthTestUtils;
+import com.isaac.sliceofpie.thesis.ThesisDtos.ThesisResponse;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Map;
 
@@ -33,7 +36,7 @@ class ThesisFlowTest {
         String token = AuthTestUtils.registerAndLogin(client, username, password);
 
         // CREATE
-        client.post()
+        ThesisResponse created = client.post()
                 .uri("/thesis")
                 .header("Authorization", "Bearer " + token)
                 .bodyValue(Map.of(
@@ -42,10 +45,14 @@ class ThesisFlowTest {
                 ))
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.ticker").isEqualTo("AAPL")
-                .jsonPath("$.content").isEqualTo("Long term bullish due to ecosystem lock-in");
+                .expectBody(ThesisResponse.class)
+                .returnResult()
+                .getResponseBody();
 
+        assertNotNull(created);
+        assertEquals(created.ticker(), "AAPL");
+        assertEquals(created.content(),  "Long term bullish due to ecosystem lock-in");
+    
         // UPDATE (same endpoint = upsert)
         client.post()
                 .uri("/thesis")
