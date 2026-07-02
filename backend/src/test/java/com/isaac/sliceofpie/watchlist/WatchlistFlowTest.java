@@ -72,6 +72,13 @@ class WatchlistFlowTest {
                 .exchange()
                 .expectStatus().isNoContent();
 
+        // deleting the same ticker twice should be a no-op, not a duplicate/error
+        client.delete()
+                .uri("/watchlist/AAPL")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isNoContent();
+
         WatchlistResponse afterUnfollow = client.get()
                 .uri("/watchlist")
                 .header("Authorization", "Bearer " + token)
