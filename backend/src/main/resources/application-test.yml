@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/sliceofpie_test
-    username: test_user
-    password: test_password
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:
     hibernate:
@@ -12,8 +12,8 @@ spring:
     enabled: true
 
 jwt:
-  secret: dev-secret-key-super-long-for-sure-test-secret-12345679
+  secret: ${JWT_SECRET}
   expiration: 86400000
 
 server:
-  port: 8080
+  port: 0
