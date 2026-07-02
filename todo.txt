@@ -1,0 +1,3 @@
+Need to ensure only valid tickers can be added (needs to reference something - maybe a dropdown menu)?
+
+Thesis statements should persist after removal from watchlist but maybe get marked as stale?
