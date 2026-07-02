@@ -39,9 +39,9 @@ public class ThesisController {
             @PathVariable String ticker,
             Authentication auth
     ) {
-        Long userId = Long.parseLong(auth.getName());
+        String username = auth.getName();
 
-        Thesis thesis = service.get(userId, ticker);
+        Thesis thesis = service.get(username, ticker);
 
         return ResponseEntity.ok(
                 new ThesisResponse(
