@@ -1,5 +1,6 @@
 package com.isaac.sliceofpie.thesis;
 
+import com.isaac.sliceofpie.auth.AuthDtos.UserPrincipal;
 import com.isaac.sliceofpie.thesis.ThesisDtos.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,10 +21,8 @@ public class ThesisController {
             @RequestBody UpsertThesisRequest req,
             Authentication auth
     ) {
-        String username = auth.getName();
-
-        Thesis thesis = service.upsert(username, req.ticker(), req.content());
-
+        UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+        Thesis thesis = service.upsert(principal.id(), req.ticker(), req.content());
         return ResponseEntity.ok(
                 new ThesisResponse(
                         thesis.getTicker(),
@@ -39,9 +38,8 @@ public class ThesisController {
             @PathVariable String ticker,
             Authentication auth
     ) {
-        String username = auth.getName();
-
-        Thesis thesis = service.get(username, ticker);
+        UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
+        Thesis thesis = service.get(principal.id(), ticker);
 
         return ResponseEntity.ok(
                 new ThesisResponse(

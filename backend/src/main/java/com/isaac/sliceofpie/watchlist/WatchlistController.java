@@ -1,5 +1,6 @@
 package com.isaac.sliceofpie.watchlist;
 
+import com.isaac.sliceofpie.auth.AuthDtos.UserPrincipal;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistItemResponse;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistResponse;
 import org.springframework.http.ResponseEntity;
@@ -18,18 +19,21 @@ public class WatchlistController {
 
     @PostMapping("/{ticker}")
     public ResponseEntity<WatchlistItemResponse> follow(@PathVariable String ticker, Authentication authentication) {
-        String ticker0 = watchlistService.follow(authentication.getName(), ticker);
-        return ResponseEntity.ok(new WatchlistItemResponse(ticker0));
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        String result = watchlistService.follow(principal.id(), ticker);
+        return ResponseEntity.ok(new WatchlistItemResponse(result));
     }
 
     @DeleteMapping("/{ticker}")
     public ResponseEntity<Void> unfollow(@PathVariable String ticker, Authentication authentication) {
-        watchlistService.unfollow(authentication.getName(), ticker);
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        watchlistService.unfollow(principal.id(), ticker);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping
     public ResponseEntity<WatchlistResponse> getWatchlist(Authentication authentication) {
-        return ResponseEntity.ok(new WatchlistResponse(watchlistService.getTickers(authentication.getName())));
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        return ResponseEntity.ok(new WatchlistResponse(watchlistService.getTickers(principal.id())));
     }
 }

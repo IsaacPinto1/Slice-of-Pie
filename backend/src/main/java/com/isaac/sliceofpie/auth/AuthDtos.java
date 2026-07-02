@@ -2,6 +2,8 @@ package com.isaac.sliceofpie.auth;
 
 public class AuthDtos {
 
+    public record UserPrincipal(Long id, String username) {}
+
     public record RegisterRequest(String username, String password) {}
 
     public record RegisterResponse(String username) {}
