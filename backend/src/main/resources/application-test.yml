@@ -1,19 +1,13 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
-
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sliceofpie_test}
+    username: ${SPRING_DATASOURCE_USERNAME:test_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:test_password}
   jpa:
     hibernate:
       ddl-auto: validate
-
   flyway:
     enabled: true
-
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:dev-secret-key-super-long-for-sure-test-secret}
   expiration: 86400000
-
-server:
-  port: 0
