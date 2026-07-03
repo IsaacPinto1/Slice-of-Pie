@@ -46,8 +46,13 @@ public class InstrumentResolutionService {
     }
 
     public Instrument getById(Long instrumentId) {
+        System.out.println("LOOKINGFOR" + instrumentId);
         return instrumentRepository.findById(instrumentId)
                 .orElseThrow(() -> new InstrumentNotFoundException("id=" + instrumentId));
+    }
+
+    public List<String> getTickersFromIds(List<Long> ids){
+        return ids.stream().map(id -> getById(id).getTicker()).toList();
     }
 
     private Instrument createInstrument(String ticker, String name) {

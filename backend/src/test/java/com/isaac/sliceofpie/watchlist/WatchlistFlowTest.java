@@ -1,10 +1,16 @@
 package com.isaac.sliceofpie.watchlist;
 
 import com.isaac.sliceofpie.auth.AuthTestUtils;
+import com.isaac.sliceofpie.instrument.InstrumentRepository;
+import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
+import com.isaac.sliceofpie.instrument.lookup.InstrumentLookupClient;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistItemResponse;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
@@ -12,14 +18,27 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
+
+@ExtendWith(MockitoExtension.class)
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 class WatchlistFlowTest {
 
     private WebTestClient client;
 
+    @Mock
+    private InstrumentRepository instrumentRepository;
+
+    @Mock
+    private InstrumentLookupClient instrumentLookupClient;
+
+    private InstrumentResolutionService instrumentResolutionService;
+
     @BeforeEach
-    void setup(@LocalServerPort int port) {
+    void setUp(@LocalServerPort int port) {
+        instrumentResolutionService = new InstrumentResolutionService(instrumentRepository, instrumentLookupClient);
         client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
     }
 
@@ -61,10 +80,14 @@ class WatchlistFlowTest {
                 .returnResult()
                 .getResponseBody();
 
+        System.out.println("LOOK" + list);
+        
+        List<String> tickers = instrumentResolutionService.getTickersFromIds(list.instrumentIds());
+
         assertNotNull(list);
-        assertEquals(2, list.tickers().size());
-        assertTrue(list.tickers().contains("AAPL"));
-        assertTrue(list.tickers().contains("TSLA"));
+        assertEquals(2, list.instrumentIds().size());
+        assertTrue(tickers.contains("AAPL"));
+        assertTrue(tickers.contains("TSLA"));
 
         client.delete()
                 .uri("/watchlist/AAPL")
@@ -87,10 +110,12 @@ class WatchlistFlowTest {
                 .expectBody(WatchlistResponse.class)
                 .returnResult()
                 .getResponseBody();
+        
+        List<String> newtickers = instrumentResolutionService.getTickersFromIds(afterUnfollow.instrumentIds());
 
         assertNotNull(afterUnfollow);
-        assertEquals(1, afterUnfollow.tickers().size());
-        assertTrue(afterUnfollow.tickers().contains("TSLA"));
+        assertEquals(1, afterUnfollow.instrumentIds().size());
+        assertTrue(newtickers.contains("TSLA"));
     }
 
     @Test
@@ -121,6 +146,6 @@ class WatchlistFlowTest {
                 .getResponseBody();
 
         assertNotNull(userBList);
-        assertTrue(userBList.tickers().isEmpty());
+        assertTrue(userBList.instrumentIds().isEmpty());
     }
 }

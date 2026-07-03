@@ -3,7 +3,10 @@ package com.isaac.sliceofpie.watchlist;
 import com.isaac.sliceofpie.auth.AuthDtos.UserPrincipal;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistItemResponse;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistResponse;
-import org.springframework.http.ResponseEntity;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,23 +20,27 @@ public class WatchlistController {
         this.watchlistService = watchlistService;
     }
 
-    @PostMapping("/{ticker}")
-    public ResponseEntity<WatchlistItemResponse> follow(@PathVariable String ticker, Authentication authentication) {
+    @PostMapping("/{query}")
+    public WatchlistItemResponse follow(@PathVariable String query, Authentication authentication) {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-        String result = watchlistService.follow(principal.id(), ticker);
-        return ResponseEntity.ok(new WatchlistItemResponse(result));
+        WatchlistItem item = watchlistService.follow(principal.id(), query);
+        return WatchlistItemResponse.from(item);
     }
 
-    @DeleteMapping("/{ticker}")
-    public ResponseEntity<Void> unfollow(@PathVariable String ticker, Authentication authentication) {
+    @DeleteMapping("/{instrumentId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unfollow(@PathVariable Long instrumentId, Authentication authentication) {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-        watchlistService.unfollow(principal.id(), ticker);
-        return ResponseEntity.noContent().build();
+        watchlistService.unfollow(principal.id(), instrumentId);
     }
 
     @GetMapping
-    public ResponseEntity<WatchlistResponse> getWatchlist(Authentication authentication) {
+    public WatchlistResponse getWatchlist(Authentication authentication) {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-        return ResponseEntity.ok(new WatchlistResponse(watchlistService.getTickers(principal.id())));
+        Long userId = principal.id();
+        List<Long> instrumentIds = watchlistService.listForUser(userId).stream()
+                .map(item -> item.getInstrument().getId())
+                .toList();
+        return new WatchlistResponse(instrumentIds);
     }
 }
