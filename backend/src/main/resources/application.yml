@@ -17,7 +17,3 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
-
-finnhub:
-  api:
-    key: ${FINNHUB_API_KEY}
