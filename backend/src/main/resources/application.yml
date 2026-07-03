@@ -11,6 +11,9 @@ spring:
   flyway:
     enabled: true
 
+  config:
+    import: "optional:file:../.env[.properties]"
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000

@@ -26,7 +26,10 @@ jobs:
       SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/sliceofpie_test
       SPRING_DATASOURCE_USERNAME: test_user
       SPRING_DATASOURCE_PASSWORD: test_password
-      JWT_SECRET: dev-secret-key-super-long-for-sure-test-secret
+      JWT_SECRET: ${{secrets.JWT_SECRET}}
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+      SNAPTRADE_CLIENT_ID: ${{ secrets.SNAPTRADE_CLIENT_ID}}
+      SNAPTRADE_CONSUMER_KEY: ${{ secrets.SNAPTRADE_CONSUMER_KEY }}
 
     steps:
       - uses: actions/checkout@v4
