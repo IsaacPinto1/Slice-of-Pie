@@ -27,6 +27,7 @@ jobs:
       SPRING_DATASOURCE_USERNAME: test_user
       SPRING_DATASOURCE_PASSWORD: test_password
       JWT_SECRET: dev-secret-key-super-long-for-sure-test-secret
+      FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
