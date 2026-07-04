@@ -114,7 +114,7 @@ class WatchlistFlowTest {
                 .returnResult()
                 .getResponseBody();
 
-        List<Long> ids_after = WatchlistUtils.getIdsFromWatchlistResponse(list);
+        List<Long> ids_after = WatchlistUtils.getIdsFromWatchlistResponse(afterUnfollow);
 
         assertNotNull(afterUnfollow);
         assertEquals(1, ids_after.size());
