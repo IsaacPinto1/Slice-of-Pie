@@ -50,10 +50,6 @@ public class InstrumentResolutionService {
                 .orElseThrow(() -> new InstrumentNotFoundException("id=" + instrumentId));
     }
 
-    public List<String> getTickersFromIds(List<Long> ids){
-        return ids.stream().map(id -> getById(id).getTicker()).toList();
-    }
-
     private Instrument createInstrument(String ticker, String name) {
         try {
             Instrument instrument = new Instrument(ticker, name, null);
