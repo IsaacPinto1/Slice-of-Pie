@@ -31,7 +31,7 @@ public class ThesisService {
         return thesisRepository.findByUserIdAndInstrumentId(userId, instrument.getId())
                 .map(existing -> {
                     existing.setContent(content);
-                    return existing; // dirty-checked on commit, no explicit save needed
+                    return existing; // dirty-checked on commit (Hibernate Transactional), no explicit save needed
                 })
                 .orElseGet(() -> thesisRepository.save(new Thesis(userId, instrument, content)));
     }
