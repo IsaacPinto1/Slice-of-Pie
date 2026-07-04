@@ -9,7 +9,7 @@ public class WatchlistDtos {
 
     public record WatchlistItemResponse(
             Long instrumentId,
-            String ticker,
+            String ticker, // Ok to store this here, since it is not stored but retrieved from the instrument
             String name,
             Instant createdAt
     ) {
