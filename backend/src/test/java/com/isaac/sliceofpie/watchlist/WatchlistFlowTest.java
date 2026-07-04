@@ -1,26 +1,22 @@
 package com.isaac.sliceofpie.watchlist;
 
 import com.isaac.sliceofpie.auth.AuthTestUtils;
-import com.isaac.sliceofpie.instrument.InstrumentRepository;
-import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
+import com.isaac.sliceofpie.instrument.InstrumentDtos.InstrumentSearchResult;
 import com.isaac.sliceofpie.instrument.lookup.InstrumentLookupClient;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistItemResponse;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
 
-@ExtendWith(MockitoExtension.class)
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -28,18 +24,21 @@ class WatchlistFlowTest {
 
     private WebTestClient client;
 
-    @Mock
-    private InstrumentRepository instrumentRepository;
-
-    @Mock
+    // Only the actual external boundary is mocked - the real
+    // InstrumentResolutionService still runs, so it really does resolve,
+    // create, and persist Instrument rows via the real InstrumentRepository.
+    // WatchlistService/WatchlistRepository/the DB are all real.
+    @MockitoBean
     private InstrumentLookupClient instrumentLookupClient;
 
-    private InstrumentResolutionService instrumentResolutionService;
-
     @BeforeEach
-    void setUp(@LocalServerPort int port) {
-        instrumentResolutionService = new InstrumentResolutionService(instrumentRepository, instrumentLookupClient);
+    void setup(@LocalServerPort int port) {
         client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+
+        when(instrumentLookupClient.search("AAPL"))
+                .thenReturn(List.of(new InstrumentSearchResult("AAPL", "APPLE INC")));
+        when(instrumentLookupClient.search("TSLA"))
+                .thenReturn(List.of(new InstrumentSearchResult("TSLA", "TESLA INC")));
     }
 
     @Test
@@ -57,14 +56,20 @@ class WatchlistFlowTest {
 
         assertNotNull(followed);
         assertEquals("AAPL", followed.ticker());
+        Long aaplId = followed.instrumentId();
 
-        client.post()
+        WatchlistItemResponse followedTsla = client.post()
                 .uri("/watchlist/TSLA")
                 .header("Authorization", "Bearer " + token)
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus().isOk()
+                .expectBody(WatchlistItemResponse.class)
+                .returnResult()
+                .getResponseBody();
+        assertNotNull(followedTsla);
+        Long tslaId = followedTsla.instrumentId();
 
-        // following the same ticker twice should be a no-op, not a duplicate/error
+        // following the same instrument twice should be a no-op, not a duplicate/error
         client.post()
                 .uri("/watchlist/AAPL")
                 .header("Authorization", "Bearer " + token)
@@ -80,24 +85,20 @@ class WatchlistFlowTest {
                 .returnResult()
                 .getResponseBody();
 
-        System.out.println("LOOK" + list);
-        
-        List<String> tickers = instrumentResolutionService.getTickersFromIds(list.instrumentIds());
-
         assertNotNull(list);
         assertEquals(2, list.instrumentIds().size());
-        assertTrue(tickers.contains("AAPL"));
-        assertTrue(tickers.contains("TSLA"));
+        assertTrue(list.instrumentIds().contains(aaplId));
+        assertTrue(list.instrumentIds().contains(tslaId));
 
         client.delete()
-                .uri("/watchlist/AAPL")
+                .uri("/watchlist/{id}", aaplId)
                 .header("Authorization", "Bearer " + token)
                 .exchange()
                 .expectStatus().isNoContent();
 
-        // deleting the same ticker twice should be a no-op, not a duplicate/error
+        // deleting the same instrument twice should be a no-op, not a duplicate/error
         client.delete()
-                .uri("/watchlist/AAPL")
+                .uri("/watchlist/{id}", aaplId)
                 .header("Authorization", "Bearer " + token)
                 .exchange()
                 .expectStatus().isNoContent();
@@ -110,19 +111,17 @@ class WatchlistFlowTest {
                 .expectBody(WatchlistResponse.class)
                 .returnResult()
                 .getResponseBody();
-        
-        List<String> newtickers = instrumentResolutionService.getTickersFromIds(afterUnfollow.instrumentIds());
 
         assertNotNull(afterUnfollow);
         assertEquals(1, afterUnfollow.instrumentIds().size());
-        assertTrue(newtickers.contains("TSLA"));
+        assertTrue(afterUnfollow.instrumentIds().contains(tslaId));
     }
 
     @Test
     void watchlist_requires_auth() {
         client.get().uri("/watchlist").exchange().expectStatus().isUnauthorized();
         client.post().uri("/watchlist/AAPL").exchange().expectStatus().isUnauthorized();
-        client.delete().uri("/watchlist/AAPL").exchange().expectStatus().isUnauthorized();
+        client.delete().uri("/watchlist/{id}", 1L).exchange().expectStatus().isUnauthorized();
     }
 
     @Test
@@ -147,5 +146,16 @@ class WatchlistFlowTest {
 
         assertNotNull(userBList);
         assertTrue(userBList.instrumentIds().isEmpty());
+    }
+
+    @Test
+    void unfollow_unknownInstrumentId_isNoContent_notError() {
+        String token = AuthTestUtils.registerAndLogin(client, AuthTestUtils.uniqueUsername(), "1234");
+
+        client.delete()
+                .uri("/watchlist/{id}", 999_999L)
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isNoContent();
     }
 }

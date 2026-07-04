@@ -53,8 +53,7 @@ public class WatchlistService {
      */
     @Transactional
     public void unfollow(Long userId, Long instrumentId) {
-        Long idToDelete = instrumentResolutionService.getById(instrumentId).getId();
-        watchlistRepository.deleteByUserIdAndInstrumentId(userId, idToDelete);
+        watchlistRepository.deleteByUserIdAndInstrumentId(userId, instrumentId);
     }
 
     public List<WatchlistItem> listForUser(Long userId) {
