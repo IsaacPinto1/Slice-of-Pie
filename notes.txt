@@ -1,0 +1,3 @@
+Ok to store things multiple places on the Java side - so long as it's in only one place storage side (can save lookups)
+
+If pulling all of one object with a foreign key, can eagerly grab all the others from the other table to save N+1 problem.
