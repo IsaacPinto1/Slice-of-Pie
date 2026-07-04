@@ -17,37 +17,25 @@ public class ThesisController {
     }
 
     @PostMapping
-    public ResponseEntity<ThesisResponse> upsert(
+    public ThesisResponse upsert(
             @RequestBody UpsertThesisRequest req,
             Authentication auth
     ) {
         UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
-        Thesis thesis = service.upsert(principal.id(), req.ticker(), req.content());
-        return ResponseEntity.ok(
-                new ThesisResponse(
-                        thesis.getTicker(),
-                        thesis.getContent(),
-                        thesis.getCreatedAt(),
-                        thesis.getUpdatedAt()
-                )
-        );
+        Thesis thesis = service.upsert(principal.id(), req.instrumentId(), req.content());
+        return ThesisResponse.from(thesis);
     }
 
-    @GetMapping("/{ticker}")
+    @GetMapping("/{instrumentId}")
     public ResponseEntity<ThesisResponse> get(
-            @PathVariable String ticker,
+            @PathVariable Long instrumentId,
             Authentication auth
     ) {
         UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
-        Thesis thesis = service.get(principal.id(), ticker);
 
-        return ResponseEntity.ok(
-                new ThesisResponse(
-                        thesis.getTicker(),
-                        thesis.getContent(),
-                        thesis.getCreatedAt(),
-                        thesis.getUpdatedAt()
-                )
-        );
+        return service.getByInstrumentId(principal.id(), instrumentId)
+                .map(ThesisResponse::from) // Optional<ThesisResponse>
+                .map(ResponseEntity::ok) // Optional<ResponseEntity<ThesisResponse>>
+                .orElse(ResponseEntity.noContent().build());
     }
 }

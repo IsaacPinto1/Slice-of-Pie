@@ -1,11 +1,12 @@
 package com.isaac.sliceofpie.thesis;
 
+import com.isaac.sliceofpie.instrument.Instrument;
 import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
 @Table(name = "thesis",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "ticker"}))
+       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "instrument_id"}))
 public class Thesis {
 
     @Id
@@ -15,8 +16,9 @@ public class Thesis {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(nullable = false)
-    private String ticker;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "instrument_id", nullable = false)
+    private Instrument instrument;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
@@ -29,9 +31,9 @@ public class Thesis {
 
     public Thesis() {}
 
-    public Thesis(Long userId, String ticker, String content) {
+    public Thesis(Long userId, Instrument instrument, String content) {
         this.userId = userId;
-        this.ticker = ticker;
+        this.instrument = instrument;
         this.content = content;
     }
 
@@ -47,12 +49,10 @@ public class Thesis {
 
     public Long getId() { return id; }
     public Long getUserId() { return userId; }
-    public String getTicker() { return ticker; }
+    public Instrument getInstrument() { return instrument; }
     public String getContent() { return content; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
-    public void setUserId(Long userId) { this.userId = userId; }
-    public void setTicker(String ticker) { this.ticker = ticker; }
     public void setContent(String content) { this.content = content; }
 }
