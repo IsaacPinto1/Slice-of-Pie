@@ -84,11 +84,13 @@ class WatchlistFlowTest {
                 .expectBody(WatchlistResponse.class)
                 .returnResult()
                 .getResponseBody();
+        
+        List<Long> ids = WatchlistUtils.getIdsFromWatchlistResponse(list);
 
         assertNotNull(list);
-        assertEquals(2, list.instrumentIds().size());
-        assertTrue(list.instrumentIds().contains(aaplId));
-        assertTrue(list.instrumentIds().contains(tslaId));
+        assertEquals(2, list.items().size());
+        assertTrue(ids.contains(aaplId));
+        assertTrue(ids.contains(tslaId));
 
         client.delete()
                 .uri("/watchlist/{id}", aaplId)
@@ -112,9 +114,11 @@ class WatchlistFlowTest {
                 .returnResult()
                 .getResponseBody();
 
+        List<Long> ids_after = WatchlistUtils.getIdsFromWatchlistResponse(list);
+
         assertNotNull(afterUnfollow);
-        assertEquals(1, afterUnfollow.instrumentIds().size());
-        assertTrue(afterUnfollow.instrumentIds().contains(tslaId));
+        assertEquals(1, ids_after.size());
+        assertTrue(ids_after.contains(tslaId));
     }
 
     @Test
@@ -143,9 +147,12 @@ class WatchlistFlowTest {
                 .expectBody(WatchlistResponse.class)
                 .returnResult()
                 .getResponseBody();
+        
+        
+        List<Long> ids = WatchlistUtils.getIdsFromWatchlistResponse(userBList);
 
         assertNotNull(userBList);
-        assertTrue(userBList.instrumentIds().isEmpty());
+        assertTrue(ids.isEmpty());
     }
 
     @Test

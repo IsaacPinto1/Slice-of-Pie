@@ -37,10 +37,9 @@ public class WatchlistController {
     @GetMapping
     public WatchlistResponse getWatchlist(Authentication authentication) {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-        Long userId = principal.id();
-        List<Long> instrumentIds = watchlistService.listForUser(userId).stream()
-                .map(item -> item.getInstrument().getId())
+        List<WatchlistItemResponse> items = watchlistService.listForUser(principal.id()).stream()
+                .map(WatchlistItemResponse::from)
                 .toList();
-        return new WatchlistResponse(instrumentIds);
+        return new WatchlistResponse(items);
     }
 }

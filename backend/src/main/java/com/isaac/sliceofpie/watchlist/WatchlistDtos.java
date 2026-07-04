@@ -25,6 +25,6 @@ public class WatchlistDtos {
     }
 
     public record WatchlistResponse(
-            List<Long> instrumentIds
+            List<WatchlistItemResponse> items
     ) {}
 }
