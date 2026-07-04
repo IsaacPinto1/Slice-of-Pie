@@ -1,35 +1,45 @@
 package com.isaac.sliceofpie.thesis;
 
-import org.springframework.stereotype.Service;
+import com.isaac.sliceofpie.instrument.Instrument;
+import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
 
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ThesisService {
 
     private final ThesisRepository thesisRepository;
+    private final InstrumentResolutionService instrumentResolutionService;
 
-    public ThesisService(ThesisRepository thesisRepository) {
+    public ThesisService(ThesisRepository thesisRepository,
+                          InstrumentResolutionService instrumentResolutionService) {
         this.thesisRepository = thesisRepository;
+        this.instrumentResolutionService = instrumentResolutionService;
     }
 
-    public Thesis upsert(Long userId, String ticker, String content) {
+    /**
+     * Creates or updates (upsert) the user's thesis for a ticker. Resolving with
+     * getById enforces that the instrument must exist, returning an exception otherwise.
+     */
+    @Transactional
+    public Thesis upsert(Long userId, Long instrumentId, String content) {
+        Instrument instrument = instrumentResolutionService.getById(instrumentId);
 
-        return thesisRepository.findByUserIdAndTicker(userId, ticker)
+        return thesisRepository.findByUserIdAndInstrumentId(userId, instrument.getId())
                 .map(existing -> {
                     existing.setContent(content);
-                    return thesisRepository.save(existing);
+                    return existing; // dirty-checked on commit (Hibernate Transactional), no explicit save needed
                 })
-                .orElseGet(() -> {
-                    Thesis t = new Thesis();
-                    t.setUserId(userId);
-                    t.setTicker(ticker);
-                    t.setContent(content);
-                    return thesisRepository.save(t);
-                });
+                .orElseGet(() -> thesisRepository.save(new Thesis(userId, instrument, content)));
     }
 
-    public Thesis get(Long userId, String ticker) {
-        return thesisRepository.findByUserIdAndTicker(userId, ticker)
-                .orElseThrow(() -> new RuntimeException("Not found"));
+    /**
+     * Thesis doesn't need to exist for a given user/instrument pair. 
+     */
+    public Optional<Thesis> getByInstrumentId(Long userId, Long id) {
+        return thesisRepository.findByUserIdAndInstrumentId(userId, id);
     }
 }
