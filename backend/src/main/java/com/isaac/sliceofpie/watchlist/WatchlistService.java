@@ -1,36 +1,62 @@
 package com.isaac.sliceofpie.watchlist;
 
+import com.isaac.sliceofpie.instrument.Instrument;
+import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class WatchlistService {
 
     private final WatchlistRepository watchlistRepository;
+    private final InstrumentResolutionService instrumentResolutionService;
 
-    public WatchlistService(WatchlistRepository watchlistRepository) {
+    public WatchlistService(WatchlistRepository watchlistRepository,
+                             InstrumentResolutionService instrumentResolutionService) {
         this.watchlistRepository = watchlistRepository;
+        this.instrumentResolutionService = instrumentResolutionService;
     }
 
-    public String follow(Long userId, String ticker) {
-        String normalized = ticker.toUpperCase();
-        if (!watchlistRepository.existsByUserIdAndTicker(userId, normalized)) {
-            watchlistRepository.save(new WatchlistItem(userId, normalized));
-        }
-        return normalized;
-    }
-
+    /**
+     * Resolves the given ticker/query to an Instrument (creating it if new)
+     * and adds it to the user's watchlist. Following something already on
+     * the watchlist is a no-op, not an error.
+     */
     @Transactional
-    public void unfollow(Long userId, String ticker) {
-        watchlistRepository.deleteByUserIdAndTicker(userId, ticker.toUpperCase());
+    public WatchlistItem follow(Long userId, String watchlistAddQuery) {
+        Instrument instrument = instrumentResolutionService.resolveOrCreate(watchlistAddQuery);
+
+        Optional<WatchlistItem> existing =
+                watchlistRepository.findByUserIdAndInstrumentId(userId, instrument.getId());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        try {
+            return watchlistRepository.save(new WatchlistItem(userId, instrument));
+        } catch (DataIntegrityViolationException e) {
+            // Concurrent follow of the same instrument - return the winner instead of failing.
+            return watchlistRepository.findByUserIdAndInstrumentId(userId, instrument.getId())
+                    .orElseThrow(() -> e);
+        }
     }
 
-    public List<String> getTickers(Long userId) {
-        return watchlistRepository.findByUserIdOrderByTickerAsc(userId)
-                .stream()
-                .map(WatchlistItem::getTicker)
-                .toList();
+    /**
+     * Unfollows by ticker. Looks up the instrument WITHOUT creating it -
+     * unfollowing something that was never followed (or never resolved)
+     * should be a silent no-op, not a Finnhub call that creates a new
+     * Instrument row as a side effect of a delete.
+     */
+    @Transactional
+    public void unfollow(Long userId, Long instrumentId) {
+        watchlistRepository.deleteByUserIdAndInstrumentId(userId, instrumentId);
+    }
+
+    public List<WatchlistItem> listForUser(Long userId) {
+        return watchlistRepository.findAllByUserIdFetchInstrument(userId);
     }
 }
