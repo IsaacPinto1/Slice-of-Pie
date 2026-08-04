@@ -1,14 +1,12 @@
 import api from "./axios";
 
-export function getThesis(ticker) {
-    return api.get(`/thesis/${ticker}`);
+export function getThesis(instrumentId) {
+    return api.get(`/thesis/${instrumentId}`);
 }
 
-export function saveThesis(ticker, content) {
-
+export function saveThesis(instrumentId, content) {
     return api.post("/thesis", {
-        ticker,
+        instrumentId,
         content
     });
-
 }
