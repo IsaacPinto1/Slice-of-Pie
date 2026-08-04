@@ -57,6 +57,7 @@ export default function RegisterPage() {
                         <input
                             id="username"
                             name="username"
+                            type="text"
                             autoComplete="username"
                             placeholder="jane_investor"
                             value={username}

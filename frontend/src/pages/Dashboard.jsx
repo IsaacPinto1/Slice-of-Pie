@@ -121,6 +121,7 @@ export default function Dashboard() {
                                     </svg>
                                     <input
                                         id="ticker-search-input"
+                                        type="text"
                                         aria-label="Add a ticker or company name"
                                         placeholder="Ticker or company name (e.g. AAPL)"
                                         value={newTicker}
