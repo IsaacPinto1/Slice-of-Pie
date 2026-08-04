@@ -6,6 +6,7 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
     const [thesis, setThesis] = useState("");
     const [loadingThesis, setLoadingThesis] = useState(true);
     const [removing, setRemoving] = useState(false);
+    const [confirmingRemove, setConfirmingRemove] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -33,6 +34,7 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
             await onRemove(instrumentId);
         } finally {
             setRemoving(false);
+            setConfirmingRemove(false);
         }
     };
 
@@ -43,13 +45,32 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
                     <div className="ticker-symbol">{ticker}</div>
                     {name && <div className="ticker-name">{name}</div>}
                 </div>
-                <button
-                    className="danger small"
-                    onClick={handleRemove}
-                    disabled={removing}
-                >
-                    {removing ? "Removing..." : "Remove"}
-                </button>
+                {confirmingRemove ? (
+                    <div className="confirm-remove">
+                        <span className="confirm-remove-label">Remove {ticker}?</span>
+                        <button
+                            className="danger small"
+                            onClick={handleRemove}
+                            disabled={removing}
+                        >
+                            {removing ? "Removing..." : "Yes, remove"}
+                        </button>
+                        <button
+                            className="secondary small"
+                            onClick={() => setConfirmingRemove(false)}
+                            disabled={removing}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        className="danger small"
+                        onClick={() => setConfirmingRemove(true)}
+                    >
+                        Remove
+                    </button>
+                )}
             </div>
 
             {loadingThesis ? (

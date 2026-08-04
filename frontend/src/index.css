@@ -456,6 +456,20 @@ button.small {
   gap: 8px;
 }
 
+.confirm-remove {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.confirm-remove-label {
+  font-size: 13px;
+  color: var(--text-h);
+  margin-right: 2px;
+}
+
 .ticker-symbol {
   font-family: var(--mono);
   font-weight: 700;

@@ -9,8 +9,6 @@ username taken should be handled gracefully
 
 resizing one ticker shouldn't resize whole row
 
-nicer login/ticker search boxes
-
 Portfolio positions
 
 Price Data
