@@ -8,9 +8,11 @@ import { searchInstruments } from "../api/instruments";
 // limit even with several people searching at once.
 const DEBOUNCE_MS = 400;
 
-// The dropdown holds up to 10 results but only ever shows 5 rows at once -
-// the rest scroll. VISIBLE_ROWS must match the CSS row math (see
-// --ticker-option-height / .ticker-search-list in index.css).
+// The dropdown holds up to the backend's search cap
+// (InstrumentResolutionService.MAX_SEARCH_RESULTS) but only ever shows this
+// many rows at once - the rest scroll. VISIBLE_ROWS must match the CSS row
+// math (see --ticker-option-height / .ticker-search-list in index.css) and
+// the --ticker-visible-rows custom property there.
 const VISIBLE_ROWS = 5;
 
 export default function TickerSearch({ onSelect, disabled }) {
@@ -81,7 +83,7 @@ export default function TickerSearch({ onSelect, disabled }) {
     }, []);
 
     // Keep the highlighted row scrolled into view as arrow keys move past
-    // the 5 visible rows, into the scrolled-off remainder of the 10.
+    // VISIBLE_ROWS, into the scrolled-off remainder of the backend's cap.
     useEffect(() => {
         if (highlightedIndex < 0) return;
         optionRefs.current[highlightedIndex]?.scrollIntoView({ block: "nearest" });

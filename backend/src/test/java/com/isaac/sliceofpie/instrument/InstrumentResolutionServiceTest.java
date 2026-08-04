@@ -36,32 +36,36 @@ class InstrumentResolutionServiceTest {
     // ---------- search() - read-only, never touches the database ----------
 
     @Test
-    void search_returnsProviderResults_cappedAtTen() {
-        List<InstrumentSearchResult> elevenResults = java.util.stream.IntStream.range(0, 11)
+    void search_returnsProviderResults_cappedAtMaxSearchResults() {
+        // One more than the cap, generated dynamically so this test keeps
+        // proving the boundary even if MAX_SEARCH_RESULTS changes.
+        List<InstrumentSearchResult> oversizedResults = java.util.stream.IntStream
+                .range(0, InstrumentResolutionService.MAX_SEARCH_RESULTS + 1)
                 .mapToObj(i -> new InstrumentSearchResult("SYM" + i, "COMPANY " + i))
                 .toList();
-        when(instrumentLookupClient.search("apple")).thenReturn(elevenResults);
+        when(instrumentLookupClient.search("apple")).thenReturn(oversizedResults);
 
         List<InstrumentSearchResult> results = service.search("apple");
 
-        assertThat(results).hasSize(10);
-        assertThat(results).containsExactlyElementsOf(elevenResults.subList(0, 10));
+        assertThat(results).hasSize(InstrumentResolutionService.MAX_SEARCH_RESULTS);
+        assertThat(results).containsExactlyElementsOf(
+                oversizedResults.subList(0, InstrumentResolutionService.MAX_SEARCH_RESULTS));
         verifyNoInteractions(instrumentRepository);
     }
 
     @Test
-    void search_returnsAllResults_whenFewerThanTen() {
-        List<InstrumentSearchResult> threeResults = List.of(
-                new InstrumentSearchResult("AAPL", "APPLE INC"),
-                new InstrumentSearchResult("AAPL.MX", "APPLE INC MEXICO"),
-                new InstrumentSearchResult("AAPL.SW", "APPLE INC SWISS")
-        );
-        when(instrumentLookupClient.search("apple")).thenReturn(threeResults);
+    void search_returnsAllResults_whenFewerThanMaxSearchResults() {
+        // One fewer than the cap, generated dynamically for the same reason.
+        List<InstrumentSearchResult> underCapResults = java.util.stream.IntStream
+                .range(0, InstrumentResolutionService.MAX_SEARCH_RESULTS - 1)
+                .mapToObj(i -> new InstrumentSearchResult("SYM" + i, "COMPANY " + i))
+                .toList();
+        when(instrumentLookupClient.search("apple")).thenReturn(underCapResults);
 
         List<InstrumentSearchResult> results = service.search("apple");
 
-        assertThat(results).hasSize(3);
-        assertThat(results).containsExactlyElementsOf(threeResults);
+        assertThat(results).hasSize(InstrumentResolutionService.MAX_SEARCH_RESULTS - 1);
+        assertThat(results).containsExactlyElementsOf(underCapResults);
     }
 
     @Test

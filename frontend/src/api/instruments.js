@@ -1,7 +1,8 @@
 import api from "./axios";
 
 // Read-only search-as-you-type lookup - never creates anything.
-// Returns up to 5 candidates: [{ ticker, name }, ...]
+// Returns up to the backend's configured cap of candidates
+// (InstrumentResolutionService.MAX_SEARCH_RESULTS): [{ ticker, name }, ...]
 export function searchInstruments(query) {
     return api.get("/instruments/search", { params: { q: query } });
 }

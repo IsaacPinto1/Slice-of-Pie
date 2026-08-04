@@ -12,10 +12,12 @@ import java.util.List;
 @Service
 public class InstrumentResolutionService {
 
-    // The dropdown shows all of these, scrolled to a 5-row viewport - the
-    // cap just bounds how much we ask the provider for and send over the
-    // wire per keystroke.
-    private static final int MAX_SEARCH_RESULTS = 10;
+    // The dropdown shows all of these, scrolled to a fixed-height viewport -
+    // the cap just bounds how much we ask the provider for and send over the
+    // wire per keystroke. Package-private (not private) so
+    // InstrumentResolutionServiceTest can assert against it directly instead
+    // of hardcoding a copy of this number.
+    static final int MAX_SEARCH_RESULTS = 10;
 
     private final InstrumentRepository instrumentRepository;
     private final InstrumentLookupClient instrumentLookupClient;
