@@ -12,10 +12,10 @@ import java.util.List;
 @Service
 public class InstrumentResolutionService {
 
-    // Matches the "top 5" dropdown the frontend renders - trimming here
-    // keeps that contract in one place instead of relying on the frontend
-    // to slice whatever the provider happens to return.
-    private static final int MAX_SEARCH_RESULTS = 5;
+    // The dropdown shows all of these, scrolled to a 5-row viewport - the
+    // cap just bounds how much we ask the provider for and send over the
+    // wire per keystroke.
+    private static final int MAX_SEARCH_RESULTS = 10;
 
     private final InstrumentRepository instrumentRepository;
     private final InstrumentLookupClient instrumentLookupClient;

@@ -8,6 +8,11 @@ import { searchInstruments } from "../api/instruments";
 // limit even with several people searching at once.
 const DEBOUNCE_MS = 400;
 
+// The dropdown holds up to 10 results but only ever shows 5 rows at once -
+// the rest scroll. VISIBLE_ROWS must match the CSS row math (see
+// --ticker-option-height / .ticker-search-list in index.css).
+const VISIBLE_ROWS = 5;
+
 export default function TickerSearch({ onSelect, disabled }) {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
@@ -19,6 +24,7 @@ export default function TickerSearch({ onSelect, disabled }) {
 
     const containerRef = useRef(null);
     const requestIdRef = useRef(0);
+    const optionRefs = useRef([]);
 
     const handleQueryChange = (value) => {
         setQuery(value);
@@ -74,6 +80,13 @@ export default function TickerSearch({ onSelect, disabled }) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Keep the highlighted row scrolled into view as arrow keys move past
+    // the 5 visible rows, into the scrolled-off remainder of the 10.
+    useEffect(() => {
+        if (highlightedIndex < 0) return;
+        optionRefs.current[highlightedIndex]?.scrollIntoView({ block: "nearest" });
+    }, [highlightedIndex]);
+
     const handleSelect = async (result) => {
         if (selecting) return;
         setSelecting(true);
@@ -109,6 +122,8 @@ export default function TickerSearch({ onSelect, disabled }) {
         }
     };
 
+    const hasOverflow = results.length > VISIBLE_ROWS;
+
     return (
         <div className="ticker-search-wrap" ref={containerRef}>
             <div className="ticker-search-input-wrap">
@@ -132,25 +147,28 @@ export default function TickerSearch({ onSelect, disabled }) {
             </div>
 
             {isOpen && results.length > 0 && (
-                <ul className="ticker-search-dropdown" role="listbox">
-                    {results.map((result, index) => (
-                        <li key={result.ticker}>
-                            <button
-                                type="button"
-                                role="option"
-                                aria-selected={index === highlightedIndex}
-                                className={`ticker-search-option${index === highlightedIndex ? " highlighted" : ""}`}
-                                disabled={selecting}
-                                onMouseEnter={() => setHighlightedIndex(index)}
-                                onClick={() => handleSelect(result)}
-                            >
-                                <span className="ticker-search-option-ticker">{result.ticker}</span>
-                                <span className="ticker-search-option-sep">-</span>
-                                <span className="ticker-search-option-name">{result.name}</span>
-                            </button>
-                        </li>
-                    ))}
-                </ul>
+                <div className={`ticker-search-dropdown${hasOverflow ? " has-overflow" : ""}`}>
+                    <ul className="ticker-search-list" role="listbox">
+                        {results.map((result, index) => (
+                            <li key={result.ticker}>
+                                <button
+                                    ref={(el) => { optionRefs.current[index] = el; }}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={index === highlightedIndex}
+                                    className={`ticker-search-option${index === highlightedIndex ? " highlighted" : ""}`}
+                                    disabled={selecting}
+                                    onMouseEnter={() => setHighlightedIndex(index)}
+                                    onClick={() => handleSelect(result)}
+                                >
+                                    <span className="ticker-search-option-ticker">{result.ticker}</span>
+                                    <span className="ticker-search-option-sep">-</span>
+                                    <span className="ticker-search-option-name">{result.name}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             )}
 
             {isOpen && !loading && results.length === 0 && query.trim() && !error && (

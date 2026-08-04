@@ -1,4 +1,6 @@
 
+stocks already in watchlist should be marked as followed somehow in the search
+
 Thesis statements should persist after removal from watchlist but maybe get marked as stale?
 
 Add linter
