@@ -4,10 +4,12 @@ export function getWatchlist() {
     return api.get("/watchlist");
 }
 
-export function addTicker(ticker) {
-    return api.post(`/watchlist/${ticker}`);
+// query can be a ticker or company name - the backend resolves/creates
+// the underlying Instrument for us.
+export function addTicker(query) {
+    return api.post(`/watchlist/${encodeURIComponent(query)}`);
 }
 
-export function removeTicker(ticker) {
-    return api.delete(`/watchlist/${ticker}`);
+export function removeTicker(instrumentId) {
+    return api.delete(`/watchlist/${instrumentId}`);
 }

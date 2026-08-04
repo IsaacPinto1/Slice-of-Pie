@@ -1,42 +1,88 @@
 import { useState } from "react";
 import { register } from "../api/auth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link, Navigate } from "react-router-dom";
+import BrandMark from "../components/BrandMark";
 
 export default function RegisterPage() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [submitting, setSubmitting] = useState(false);
     const navigate = useNavigate();
 
-    const handleRegister = async () => {
+    if (localStorage.getItem("token")) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
+    const handleRegister = async (e) => {
+        e.preventDefault();
+        if (!username || !password) return;
+
+        setError("");
+        setSubmitting(true);
         try {
             await register(username, password);
-            alert("Registered successfully");
-            navigate("/login");
+            navigate("/login", { state: { registered: true } });
         } catch (err) {
-            alert("Registration failed");
+            const status = err.response?.status;
+            setError(
+                status === 409
+                    ? "That username is already taken."
+                    : "Couldn't register. Please try again."
+            );
+        } finally {
+            setSubmitting(false);
         }
     };
 
     return (
-        <div>
-            <h2>Register</h2>
+        <div className="auth-shell">
+            <div className="auth-card">
+                <div className="brand">
+                    <BrandMark />
+                    <span className="brand-name">Slice of Pie</span>
+                </div>
 
-            <input
-                placeholder="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-            />
+                <h2>Create an account</h2>
+                <p className="auth-subtitle">Track your watchlist and investing theses</p>
 
-            <input
-                placeholder="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-            />
+                {error && <div className="banner error">{error}</div>}
 
-            <button onClick={handleRegister}>
-                Register
-            </button>
+                <form onSubmit={handleRegister}>
+                    <div className="field">
+                        <label htmlFor="username">Username</label>
+                        <input
+                            id="username"
+                            name="username"
+                            autoComplete="username"
+                            placeholder="jane_investor"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="field">
+                        <label htmlFor="password">Password</label>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
+                    </div>
+
+                    <button type="submit" disabled={submitting}>
+                        {submitting ? "Creating account..." : "Register"}
+                    </button>
+                </form>
+
+                <p className="auth-footer">
+                    Already have an account? <Link to="/login">Log in here</Link>
+                </p>
+            </div>
         </div>
     );
 }

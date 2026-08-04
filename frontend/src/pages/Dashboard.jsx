@@ -1,39 +1,80 @@
 import { useEffect, useState } from "react";
-import api from "../api/axios";
 import Watchlist from "../components/Watchlist";
 import { addTicker, getWatchlist, removeTicker } from "../api/watchlist";
+import { getMe } from "../api/user";
+import BrandMark from "../components/BrandMark";
 
 export default function Dashboard() {
     const [username, setUsername] = useState("");
     const [watchlist, setWatchlist] = useState([]);
     const [newTicker, setNewTicker] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [adding, setAdding] = useState(false);
+    const [addError, setAddError] = useState("");
 
     useEffect(() => {
-        loadMe();
-        loadWatchlist();
+        let cancelled = false;
+
+        const load = async () => {
+            setLoading(true);
+            setError("");
+            try {
+                const [meRes, watchlistRes] = await Promise.all([
+                    getMe(),
+                    getWatchlist(),
+                ]);
+                if (cancelled) return;
+                setUsername(meRes.data.username);
+                setWatchlist(watchlistRes.data.items);
+            } catch {
+                if (!cancelled) setError("Couldn't load your dashboard. Try refreshing.");
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        load();
+        return () => { cancelled = true; };
     }, []);
 
-    const loadMe = async () => {
-        const res = await api.get("/me");
-        setUsername(res.data.username);
-    };
-
-    const loadWatchlist = async () => {
+    const reloadWatchlist = async () => {
         const res = await getWatchlist();
-        setWatchlist(res.data.tickers);
+        setWatchlist(res.data.items);
     };
 
-    const handleAdd = async () => {
-        if (!newTicker) return;
+    const handleAdd = async (e) => {
+        e.preventDefault();
+        const query = newTicker.trim();
+        if (!query || adding) return;
 
-        await addTicker(newTicker);
-        setNewTicker("");
-        loadWatchlist();
+        setAdding(true);
+        setAddError("");
+        try {
+            await addTicker(query);
+            setNewTicker("");
+            await reloadWatchlist();
+        } catch (err) {
+            setAddError(
+                err.response?.status === 404
+                    ? `Couldn't find a ticker matching "${query}".`
+                    : "Couldn't add that to your watchlist. Try again."
+            );
+        } finally {
+            setAdding(false);
+        }
     };
 
-    const handleRemove = async (ticker) => {
-        await removeTicker(ticker);
-        loadWatchlist();
+    const handleRemove = async (instrumentId) => {
+        const previous = watchlist;
+        // Optimistic update - the list feels instant, and we roll back on failure.
+        setWatchlist(watchlist.filter((item) => item.instrumentId !== instrumentId));
+        try {
+            await removeTicker(instrumentId);
+        } catch {
+            setWatchlist(previous);
+            setError("Couldn't remove that ticker. Try again.");
+        }
     };
 
     const logout = () => {
@@ -42,28 +83,51 @@ export default function Dashboard() {
     };
 
     return (
-        <div>
-            <h1>Dashboard</h1>
+        <>
+            <header className="app-header">
+                <div className="brand">
+                    <BrandMark />
+                    <span className="brand-name">Slice of Pie</span>
+                </div>
+                <div className="header-right">
+                    {username && <span className="header-user">{username}</span>}
+                    <button className="secondary small" onClick={logout}>
+                        Log out
+                    </button>
+                </div>
+            </header>
 
-            <h2>Welcome, {username}</h2>
+            <div className="page">
+                {loading ? (
+                    <div className="loading-row">
+                        <span className="spinner" />
+                        <span>Loading your dashboard...</span>
+                    </div>
+                ) : (
+                    <>
+                        <div className="dashboard-head">
+                            <h1>Your watchlist</h1>
+                        </div>
 
-            <button onClick={logout}>
-                Logout
-            </button>
+                        {error && <div className="banner error">{error}</div>}
 
-            <div>
-                <input
-                    placeholder="Add ticker (AAPL)"
-                    value={newTicker}
-                    onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
-                />
-                <button onClick={handleAdd}>Add</button>
+                        <form className="add-ticker-form" onSubmit={handleAdd}>
+                            <input
+                                aria-label="Add a ticker or company name"
+                                placeholder="Add a ticker or company name (e.g. AAPL)"
+                                value={newTicker}
+                                onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
+                            />
+                            <button type="submit" disabled={adding || !newTicker.trim()}>
+                                {adding ? "Adding..." : "Add"}
+                            </button>
+                        </form>
+                        {addError && <div className="banner error">{addError}</div>}
+
+                        <Watchlist items={watchlist} onRemove={handleRemove} />
+                    </>
+                )}
             </div>
-
-            <Watchlist
-                tickers={watchlist}
-                onRemove={handleRemove}
-            />
-        </div>
+        </>
     );
 }
