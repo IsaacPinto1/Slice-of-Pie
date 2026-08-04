@@ -1,3 +1,4 @@
-Ok to store things multiple places on the Java side - so long as it's in only one place storage side (can save lookups)
+Ok to store things multiple places on the Java/server side - so long as it's in only one place storage/database side (can save lookups). Important
+part is that there's only 1 source of truth (storage side)
 
 If pulling all of one object with a foreign key, can eagerly grab all the others from the other table to save N+1 problem.
