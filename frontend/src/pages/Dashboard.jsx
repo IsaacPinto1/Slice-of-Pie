@@ -111,18 +111,25 @@ export default function Dashboard() {
 
                         {error && <div className="banner error">{error}</div>}
 
-                        <form className="add-ticker-form" onSubmit={handleAdd}>
-                            <input
-                                aria-label="Add a ticker or company name"
-                                placeholder="Add a ticker or company name (e.g. AAPL)"
-                                value={newTicker}
-                                onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
-                            />
-                            <button type="submit" disabled={adding || !newTicker.trim()}>
-                                {adding ? "Adding..." : "Add"}
-                            </button>
-                        </form>
-                        {addError && <div className="banner error">{addError}</div>}
+                        <div className="ticker-search">
+                            <label htmlFor="ticker-search-input">Add to watchlist</label>
+                            <form className="add-ticker-form" onSubmit={handleAdd}>
+                                <div className="ticker-search-input-wrap">
+                                    <input
+                                        id="ticker-search-input"
+                                        type="text"
+                                        aria-label="Add a ticker or company name"
+                                        placeholder="Ticker or company name (e.g. AAPL)"
+                                        value={newTicker}
+                                        onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
+                                    />
+                                </div>
+                                <button type="submit" disabled={adding || !newTicker.trim()}>
+                                    {adding ? "Adding..." : "Add"}
+                                </button>
+                            </form>
+                            {addError && <p className="field-error">{addError}</p>}
+                        </div>
 
                         <Watchlist items={watchlist} onRemove={handleRemove} />
                     </>

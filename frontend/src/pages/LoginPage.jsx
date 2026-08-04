@@ -61,6 +61,7 @@ export default function LoginPage() {
                         <input
                             id="username"
                             name="username"
+                            type="text"
                             autoComplete="username"
                             placeholder="jane_investor"
                             value={username}
