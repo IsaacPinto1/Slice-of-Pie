@@ -33,58 +33,103 @@ class InstrumentResolutionServiceTest {
         service = new InstrumentResolutionService(instrumentRepository, instrumentLookupClient);
     }
 
+    // ---------- search() - read-only, never touches the database ----------
+
     @Test
-    void resolveOrCreate_createsNewInstrument_whenNotAlreadyTracked() {
-        InstrumentSearchResult result = new InstrumentSearchResult("AAPL", "APPLE INC");
-        when(instrumentLookupClient.search("apple")).thenReturn(List.of(result));
+    void search_returnsProviderResults_cappedAtFive() {
+        List<InstrumentSearchResult> sixResults = List.of(
+                new InstrumentSearchResult("AAPL", "APPLE INC"),
+                new InstrumentSearchResult("AAPL.MX", "APPLE INC MEXICO"),
+                new InstrumentSearchResult("AAPL.SW", "APPLE INC SWISS"),
+                new InstrumentSearchResult("AAPLW", "APPLE INC WARRANT"),
+                new InstrumentSearchResult("APLE", "APPLE HOSPITALITY REIT"),
+                new InstrumentSearchResult("APRU", "APPLE RUSH CO")
+        );
+        when(instrumentLookupClient.search("apple")).thenReturn(sixResults);
+
+        List<InstrumentSearchResult> results = service.search("apple");
+
+        assertThat(results).hasSize(5);
+        assertThat(results).containsExactlyElementsOf(sixResults.subList(0, 5));
+        verifyNoInteractions(instrumentRepository);
+    }
+
+    @Test
+    void search_returnsEmptyList_forBlankQuery() {
+        List<InstrumentSearchResult> results = service.search("   ");
+
+        assertThat(results).isEmpty();
+        verifyNoInteractions(instrumentLookupClient);
+    }
+
+    @Test
+    void search_returnsEmptyList_whenProviderReturnsNothing() {
+        when(instrumentLookupClient.search("zzz_nonexistent")).thenReturn(List.of());
+
+        List<InstrumentSearchResult> results = service.search("zzz_nonexistent");
+
+        assertThat(results).isEmpty();
+    }
+
+    // ---------- create() - the only path that creates an Instrument ----------
+
+    @Test
+    void create_createsNewInstrument_fromExplicitTickerAndName() {
         when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.empty());
         when(instrumentRepository.save(any(Instrument.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Instrument instrument = service.resolveOrCreate("apple");
+        Instrument instrument = service.create("AAPL", "APPLE INC");
 
         assertThat(instrument.getTicker()).isEqualTo("AAPL");
         assertThat(instrument.getName()).isEqualTo("APPLE INC");
         verify(instrumentRepository).save(any(Instrument.class));
+        verifyNoInteractions(instrumentLookupClient);
     }
 
     @Test
-    void resolveOrCreate_returnsExistingInstrument_withoutCreatingDuplicate() {
-        InstrumentSearchResult result = new InstrumentSearchResult("AAPL", "APPLE INC");
+    void create_returnsExistingInstrument_withoutCreatingDuplicate() {
         Instrument existing = new Instrument("AAPL", "APPLE INC", null);
-
-        when(instrumentLookupClient.search("AAPL")).thenReturn(List.of(result));
         when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.of(existing));
 
-        Instrument instrument = service.resolveOrCreate("AAPL");
+        Instrument instrument = service.create("AAPL", "APPLE INC");
 
         assertThat(instrument).isSameAs(existing);
         verify(instrumentRepository, never()).save(any());
     }
 
     @Test
-    void resolveOrCreate_throwsNotFound_whenNoResultsReturned() {
-        when(instrumentLookupClient.search("zzz_nonexistent")).thenReturn(List.of());
-
-        assertThatThrownBy(() -> service.resolveOrCreate("zzz_nonexistent"))
-                .isInstanceOf(InstrumentNotFoundException.class);
-
-        verify(instrumentRepository, never()).save(any());
-    }
-
-    @Test
-    void resolveOrCreate_takesFirstResult_whenMultipleMatchesReturned() {
-        InstrumentSearchResult first = new InstrumentSearchResult("AAPL", "APPLE INC");
-        InstrumentSearchResult second = new InstrumentSearchResult("APLE", "APPLE HOSPITALITY REIT");
-
-        when(instrumentLookupClient.search("apple")).thenReturn(List.of(first, second));
+    void create_normalizesTickerToUppercase() {
         when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.empty());
         when(instrumentRepository.save(any(Instrument.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Instrument instrument = service.resolveOrCreate("apple");
+        service.create("aapl", "APPLE INC");
 
-        assertThat(instrument.getTicker()).isEqualTo("AAPL");
-        verify(instrumentRepository, never()).findByTicker("APLE");
+        verify(instrumentRepository).findByTicker("AAPL");
+    }
+
+    // ---------- resolve() - lookup-only, never creates ----------
+
+    @Test
+    void resolve_returnsExistingInstrument() {
+        Instrument existing = new Instrument("AAPL", "APPLE INC", null);
+        when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.of(existing));
+
+        Instrument instrument = service.resolve("AAPL");
+
+        assertThat(instrument).isSameAs(existing);
+        verifyNoInteractions(instrumentLookupClient);
+    }
+
+    @Test
+    void resolve_throwsNotFound_andNeverCreates_whenTickerUnknown() {
+        when(instrumentRepository.findByTicker("ZZZZ")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.resolve("ZZZZ"))
+                .isInstanceOf(InstrumentNotFoundException.class);
+
+        verify(instrumentRepository, never()).save(any());
+        verifyNoInteractions(instrumentLookupClient);
     }
 }

@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import Watchlist from "../components/Watchlist";
+import TickerSearch from "../components/TickerSearch";
 import { addTicker, getWatchlist, removeTicker } from "../api/watchlist";
+import { createInstrument } from "../api/instruments";
 import { getMe } from "../api/user";
 import BrandMark from "../components/BrandMark";
 
 export default function Dashboard() {
     const [username, setUsername] = useState("");
     const [watchlist, setWatchlist] = useState([]);
-    const [newTicker, setNewTicker] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [adding, setAdding] = useState(false);
-    const [addError, setAddError] = useState("");
 
     useEffect(() => {
         let cancelled = false;
@@ -43,26 +42,14 @@ export default function Dashboard() {
         setWatchlist(res.data.items);
     };
 
-    const handleAdd = async (e) => {
-        e.preventDefault();
-        const query = newTicker.trim();
-        if (!query || adding) return;
-
-        setAdding(true);
-        setAddError("");
-        try {
-            await addTicker(query);
-            setNewTicker("");
-            await reloadWatchlist();
-        } catch (err) {
-            setAddError(
-                err.response?.status === 404
-                    ? `Couldn't find a ticker matching "${query}".`
-                    : "Couldn't add that to your watchlist. Try again."
-            );
-        } finally {
-            setAdding(false);
-        }
+    // Runs when a result is picked from the search dropdown: creates the
+    // Instrument (idempotent - a no-op if it already exists), then follows
+    // it. This is the only way a ticker gets added now; TickerSearch
+    // surfaces any failure itself, so we just let errors propagate to it.
+    const handleSelectResult = async ({ ticker, name }) => {
+        await createInstrument(ticker, name);
+        await addTicker(ticker);
+        await reloadWatchlist();
     };
 
     const handleRemove = async (instrumentId) => {
@@ -113,22 +100,7 @@ export default function Dashboard() {
 
                         <div className="ticker-search">
                             <label htmlFor="ticker-search-input">Add to watchlist</label>
-                            <form className="add-ticker-form" onSubmit={handleAdd}>
-                                <div className="ticker-search-input-wrap">
-                                    <input
-                                        id="ticker-search-input"
-                                        type="text"
-                                        aria-label="Add a ticker or company name"
-                                        placeholder="Ticker or company name (e.g. AAPL)"
-                                        value={newTicker}
-                                        onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
-                                    />
-                                </div>
-                                <button type="submit" disabled={adding || !newTicker.trim()}>
-                                    {adding ? "Adding..." : "Add"}
-                                </button>
-                            </form>
-                            {addError && <p className="field-error">{addError}</p>}
+                            <TickerSearch onSelect={handleSelectResult} />
                         </div>
 
                         <Watchlist items={watchlist} onRemove={handleRemove} />

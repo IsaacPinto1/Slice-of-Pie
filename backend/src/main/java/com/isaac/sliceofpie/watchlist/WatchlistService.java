@@ -22,13 +22,17 @@ public class WatchlistService {
     }
 
     /**
-     * Resolves the given ticker/query to an Instrument (creating it if new)
-     * and adds it to the user's watchlist. Following something already on
-     * the watchlist is a no-op, not an error.
+     * Adds an already-known ticker to the user's watchlist. Following
+     * something already on the watchlist is a no-op, not an error.
+     *
+     * Does NOT create the Instrument - that only ever happens via the
+     * search -> select -> create flow (InstrumentController#create). If the
+     * ticker hasn't been created yet, this throws InstrumentNotFoundException
+     * rather than reaching out to the lookup provider as a side effect.
      */
     @Transactional
-    public WatchlistItem follow(Long userId, String watchlistAddQuery) {
-        Instrument instrument = instrumentResolutionService.resolveOrCreate(watchlistAddQuery);
+    public WatchlistItem follow(Long userId, String ticker) {
+        Instrument instrument = instrumentResolutionService.resolve(ticker);
 
         Optional<WatchlistItem> existing =
                 watchlistRepository.findByUserIdAndInstrumentId(userId, instrument.getId());
