@@ -3,13 +3,9 @@ Thesis statements should persist after removal from watchlist but maybe get mark
 
 Add linter
 
-username taken should be handled gracefully
-
-"are you sure" deletion for watchlist
+Handle delete behaviour better when main UI changes
 
 resizing one ticker shouldn't resize whole row
-
-nicer login/ticker search boxes
 
 Portfolio positions
 

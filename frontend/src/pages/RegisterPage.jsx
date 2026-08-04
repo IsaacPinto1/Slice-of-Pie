@@ -15,7 +15,7 @@ export default function RegisterPage() {
         return <Navigate to="/dashboard" replace />;
     }
 
-    const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+    const passwordsMismatch = confirmPassword.length >= password.length && password !== confirmPassword;
 
     const handleRegister = async (e) => {
         e.preventDefault();
