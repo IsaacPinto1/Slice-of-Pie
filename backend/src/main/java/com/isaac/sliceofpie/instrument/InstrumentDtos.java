@@ -5,7 +5,12 @@ import java.time.Instant;
 import jakarta.validation.constraints.NotBlank;
 
 public class InstrumentDtos {
-    public record ResolveInstrumentRequest(@NotBlank(message = "query must not be blank") String query) {}
+    // Sent once the user has selected a result from the search dropdown -
+    // ticker and name both come from that result, not a free-text query.
+    public record CreateInstrumentRequest(
+        @NotBlank(message = "ticker must not be blank") String ticker,
+        @NotBlank(message = "name must not be blank") String name
+    ) {}
 
     public record InstrumentResponse(
         Long id,

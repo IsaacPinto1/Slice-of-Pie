@@ -12,6 +12,11 @@ import java.util.List;
 @Service
 public class InstrumentResolutionService {
 
+    // Matches the "top 5" dropdown the frontend renders - trimming here
+    // keeps that contract in one place instead of relying on the frontend
+    // to slice whatever the provider happens to return.
+    private static final int MAX_SEARCH_RESULTS = 5;
+
     private final InstrumentRepository instrumentRepository;
     private final InstrumentLookupClient instrumentLookupClient;
 
@@ -22,27 +27,53 @@ public class InstrumentResolutionService {
     }
 
     /**
-     * Resolves a free-text query (ticker or company name) to a durable Instrument,
-     * creating one if this is the first time we've seen it.
-     *
-     * NOTE: for now this just takes the FIRST result the lookup provider returns -
-     * no disambiguation UI yet. See roadmap "open decisions" for follow-up.
+     * Read-only lookup for the search-as-you-type dropdown. Never touches
+     * the database - just proxies the provider's candidates, capped to
+     * MAX_SEARCH_RESULTS. Nothing is created here.
      */
-    @Transactional
-    public Instrument resolveOrCreate(String query) {
-        String normalizedQuery = query.trim();
-
-        List<InstrumentSearchResult> results = instrumentLookupClient.search(normalizedQuery);
-
-        if (results == null || results.isEmpty()) {
-            throw new InstrumentNotFoundException(normalizedQuery);
+    public List<InstrumentSearchResult> search(String query) {
+        String normalizedQuery = query == null ? "" : query.trim();
+        if (normalizedQuery.isEmpty()) {
+            return List.of();
         }
 
-        InstrumentSearchResult firstResult = results.get(0);
-        String ticker = firstResult.ticker();
+        List<InstrumentSearchResult> results = instrumentLookupClient.search(normalizedQuery);
+        if (results == null || results.isEmpty()) {
+            return List.of();
+        }
 
-        return instrumentRepository.findByTicker(ticker)
-                .orElseGet(() -> createInstrument(ticker, firstResult.name()));
+        return results.size() > MAX_SEARCH_RESULTS
+                ? results.subList(0, MAX_SEARCH_RESULTS)
+                : results;
+    }
+
+    /**
+     * Creates a durable Instrument from a result the user explicitly picked
+     * out of the search dropdown (ticker + name both come from that result -
+     * no further provider call needed). Idempotent: following up with the
+     * same ticker returns the existing row instead of duplicating it.
+     *
+     * This is the ONLY path that creates an Instrument. Everything else
+     * (watchlist follow, positions, theses) must go through resolve()
+     * instead, which never creates.
+     */
+    @Transactional
+    public Instrument create(String ticker, String name) {
+        String normalizedTicker = ticker.trim().toUpperCase();
+
+        return instrumentRepository.findByTicker(normalizedTicker)
+                .orElseGet(() -> createInstrument(normalizedTicker, name.trim()));
+    }
+
+    /**
+     * Looks up an already-known ticker WITHOUT creating anything. Instruments
+     * only ever come into existence via create() (search -> select -> create),
+     * so anything that isn't found here genuinely hasn't been added yet.
+     */
+    public Instrument resolve(String ticker) {
+        String normalizedTicker = ticker.trim().toUpperCase();
+        return instrumentRepository.findByTicker(normalizedTicker)
+                .orElseThrow(() -> new InstrumentNotFoundException(normalizedTicker));
     }
 
     public Instrument getById(Long instrumentId) {

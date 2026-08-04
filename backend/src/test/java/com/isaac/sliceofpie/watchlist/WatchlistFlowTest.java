@@ -1,7 +1,7 @@
 package com.isaac.sliceofpie.watchlist;
 
 import com.isaac.sliceofpie.auth.AuthTestUtils;
-import com.isaac.sliceofpie.instrument.InstrumentDtos.InstrumentSearchResult;
+import com.isaac.sliceofpie.instrument.InstrumentTestUtils;
 import com.isaac.sliceofpie.instrument.lookup.InstrumentLookupClient;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistItemResponse;
 import com.isaac.sliceofpie.watchlist.WatchlistDtos.WatchlistResponse;
@@ -16,7 +16,6 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -24,26 +23,24 @@ class WatchlistFlowTest {
 
     private WebTestClient client;
 
-    // Only the actual external boundary is mocked - the real
-    // InstrumentResolutionService still runs, so it really does resolve,
-    // create, and persist Instrument rows via the real InstrumentRepository.
-    // WatchlistService/WatchlistRepository/the DB are all real.
+    // Only present so the real FinnhubInstrumentLookupClient (which needs a
+    // real API key) isn't instantiated in the test context. follow() no
+    // longer creates instruments, so nothing here needs to be stubbed -
+    // instruments are seeded directly via InstrumentTestUtils, mirroring
+    // the real search -> select -> create flow.
     @MockitoBean
     private InstrumentLookupClient instrumentLookupClient;
 
     @BeforeEach
     void setup(@LocalServerPort int port) {
         client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
-
-        when(instrumentLookupClient.search("AAPL"))
-                .thenReturn(List.of(new InstrumentSearchResult("AAPL", "APPLE INC")));
-        when(instrumentLookupClient.search("TSLA"))
-                .thenReturn(List.of(new InstrumentSearchResult("TSLA", "TESLA INC")));
     }
 
     @Test
     void follow_unfollow_and_list_watchlist() {
         String token = AuthTestUtils.registerAndLogin(client, AuthTestUtils.uniqueUsername(), "1234");
+        InstrumentTestUtils.resolveInstrumentId(client, token, "AAPL", "APPLE INC");
+        InstrumentTestUtils.resolveInstrumentId(client, token, "TSLA", "TESLA INC");
 
         WatchlistItemResponse followed = client.post()
                 .uri("/watchlist/AAPL")
@@ -132,6 +129,7 @@ class WatchlistFlowTest {
     void users_only_see_their_own_watchlist() {
         String tokenA = AuthTestUtils.registerAndLogin(client, AuthTestUtils.uniqueUsername(), "1234");
         String tokenB = AuthTestUtils.registerAndLogin(client, AuthTestUtils.uniqueUsername(), "1234");
+        InstrumentTestUtils.resolveInstrumentId(client, tokenA, "AAPL", "APPLE INC");
 
         client.post()
                 .uri("/watchlist/AAPL")
@@ -153,6 +151,19 @@ class WatchlistFlowTest {
 
         assertNotNull(userBList);
         assertTrue(ids.isEmpty());
+    }
+
+    @Test
+    void follow_unknownTicker_isNotFound_doesNotCreateInstrument() {
+        String token = AuthTestUtils.registerAndLogin(client, AuthTestUtils.uniqueUsername(), "1234");
+
+        // Never created via POST /instruments first - follow() must not
+        // create it as a side effect anymore.
+        client.post()
+                .uri("/watchlist/ZZZZ")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isNotFound();
     }
 
     @Test

@@ -4,8 +4,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
+import com.isaac.sliceofpie.instrument.InstrumentDtos.CreateInstrumentRequest;
 import com.isaac.sliceofpie.instrument.InstrumentDtos.InstrumentResponse;
-import com.isaac.sliceofpie.instrument.InstrumentDtos.ResolveInstrumentRequest;
+import com.isaac.sliceofpie.instrument.InstrumentDtos.InstrumentSearchResult;
 
 @RestController
 @RequestMapping("/instruments")
@@ -18,16 +21,25 @@ public class InstrumentController {
     }
 
     /**
-     * Resolves a search query (ticker or company name) to an Instrument,
-     * creating it if this is the first time it's been requested.
-     *
-     * This is the entry point watchlist/position/thesis creation should
-     * go through - never accept a raw ticker string directly elsewhere.
+     * Search-as-you-type lookup for the watchlist "add" dropdown. Read-only -
+     * proxies the lookup provider's candidates (capped to 5), never creates
+     * an Instrument. The frontend debounces calls to this endpoint.
      */
-    @PostMapping("/resolve")
-    @ResponseStatus(HttpStatus.OK)
-    public InstrumentResponse resolve(@Valid @RequestBody ResolveInstrumentRequest request) {
-        Instrument instrument = instrumentResolutionService.resolveOrCreate(request.query());
+    @GetMapping("/search")
+    public List<InstrumentSearchResult> search(@RequestParam("q") String query) {
+        return instrumentResolutionService.search(query);
+    }
+
+    /**
+     * Creates an Instrument from a result the user explicitly selected out
+     * of the search dropdown. This is the ONLY way an Instrument comes into
+     * existence - there is no create-on-the-fly path anymore. Idempotent:
+     * selecting a ticker that already exists just returns the existing row.
+     */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public InstrumentResponse create(@Valid @RequestBody CreateInstrumentRequest request) {
+        Instrument instrument = instrumentResolutionService.create(request.ticker(), request.name());
         return InstrumentResponse.from(instrument);
     }
 
