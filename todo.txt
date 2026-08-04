@@ -5,6 +5,12 @@ Add linter
 
 username taken should be handled gracefully
 
+"are you sure" deletion for watchlist
+
+resizing one ticker shouldn't resize whole row
+
+nicer login/ticker search boxes
+
 Portfolio positions
 
 Price Data
