@@ -6,6 +6,7 @@ import BrandMark from "../components/BrandMark";
 export default function RegisterPage() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const navigate = useNavigate();
@@ -14,9 +15,11 @@ export default function RegisterPage() {
         return <Navigate to="/dashboard" replace />;
     }
 
+    const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+
     const handleRegister = async (e) => {
         e.preventDefault();
-        if (!username || !password) return;
+        if (!username || !password || passwordsMismatch) return;
 
         setError("");
         setSubmitting(true);
@@ -74,7 +77,23 @@ export default function RegisterPage() {
                         />
                     </div>
 
-                    <button type="submit" disabled={submitting}>
+                    <div className="field">
+                        <label htmlFor="confirm-password">Confirm password</label>
+                        <input
+                            id="confirm-password"
+                            name="confirm-password"
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder="••••••••"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                        />
+                        {passwordsMismatch && (
+                            <p className="field-error">Passwords don't match.</p>
+                        )}
+                    </div>
+
+                    <button type="submit" disabled={submitting || passwordsMismatch}>
                         {submitting ? "Creating account..." : "Register"}
                     </button>
                 </form>

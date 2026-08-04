@@ -111,18 +111,28 @@ export default function Dashboard() {
 
                         {error && <div className="banner error">{error}</div>}
 
-                        <form className="add-ticker-form" onSubmit={handleAdd}>
-                            <input
-                                aria-label="Add a ticker or company name"
-                                placeholder="Add a ticker or company name (e.g. AAPL)"
-                                value={newTicker}
-                                onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
-                            />
-                            <button type="submit" disabled={adding || !newTicker.trim()}>
-                                {adding ? "Adding..." : "Add"}
-                            </button>
-                        </form>
-                        {addError && <div className="banner error">{addError}</div>}
+                        <div className="ticker-search">
+                            <label htmlFor="ticker-search-input">Add to watchlist</label>
+                            <form className="add-ticker-form" onSubmit={handleAdd}>
+                                <div className="ticker-search-input-wrap">
+                                    <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                        <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.5" />
+                                        <path d="M14 14L18 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                                    </svg>
+                                    <input
+                                        id="ticker-search-input"
+                                        aria-label="Add a ticker or company name"
+                                        placeholder="Ticker or company name (e.g. AAPL)"
+                                        value={newTicker}
+                                        onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
+                                    />
+                                </div>
+                                <button type="submit" disabled={adding || !newTicker.trim()}>
+                                    {adding ? "Adding..." : "Add"}
+                                </button>
+                            </form>
+                            {addError && <p className="field-error">{addError}</p>}
+                        </div>
 
                         <Watchlist items={watchlist} onRemove={handleRemove} />
                     </>
