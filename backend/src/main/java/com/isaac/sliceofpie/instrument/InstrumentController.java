@@ -22,7 +22,7 @@ public class InstrumentController {
 
     /**
      * Search-as-you-type lookup for the watchlist "add" dropdown. Read-only -
-     * proxies the lookup provider's candidates (capped to 10, shown in a
+     * proxies the lookup provider's candidates (capped to MAX_SEARCH_RESULTS, shown in a
      * scrollable 5-row dropdown), never creates an Instrument. The frontend
      * debounces calls to this endpoint.
      */
