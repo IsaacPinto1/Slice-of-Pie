@@ -1,6 +1,10 @@
 
 Thesis statements should persist after removal from watchlist but maybe get marked as stale?
 
+Add linter
+
+username taken should be handled gracefully
+
 Portfolio positions
 
 Price Data
