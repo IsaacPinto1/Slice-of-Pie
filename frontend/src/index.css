@@ -416,6 +416,10 @@ button.small {
 }
 
 .ticker-search-dropdown {
+  --ticker-option-height: 42px;
+  --ticker-visible-rows: 5;
+  --ticker-list-padding: 6px;
+
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
@@ -425,11 +429,7 @@ button.small {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
-  list-style: none;
-  margin: 0;
-  padding: 6px;
-  max-height: 280px;
-  overflow-y: auto;
+  overflow: hidden; /* clips the scrolling list to the rounded corners */
 }
 
 .ticker-search-dropdown.ticker-search-empty {
@@ -438,12 +438,58 @@ button.small {
   font-size: 0.9em;
 }
 
+.ticker-search-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--ticker-list-padding);
+  /* exactly 5 rows tall, however many of the up-to-10 results came back */
+  max-height: calc(
+    var(--ticker-option-height) * var(--ticker-visible-rows) +
+      var(--ticker-list-padding) * 2
+  );
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.ticker-search-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ticker-search-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ticker-search-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.ticker-search-list::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-border);
+}
+
+/* Subtle cue that there's more to scroll - only rendered when results
+   actually exceed the 5 visible rows, so it never clips a short list. */
+.ticker-search-dropdown.has-overflow::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 6px; /* stop short of the scrollbar track */
+  bottom: 0;
+  height: 22px;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+}
+
 .ticker-search-option {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 10px;
+  height: var(--ticker-option-height);
+  padding: 0 10px;
   border: none;
   background: none;
   border-radius: var(--radius-sm);
@@ -451,6 +497,7 @@ button.small {
   cursor: pointer;
   color: var(--text-h);
   font: inherit;
+  transition: background-color 0.12s ease;
 }
 
 .ticker-search-option:hover,

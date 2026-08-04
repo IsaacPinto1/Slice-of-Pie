@@ -22,8 +22,9 @@ public class InstrumentController {
 
     /**
      * Search-as-you-type lookup for the watchlist "add" dropdown. Read-only -
-     * proxies the lookup provider's candidates (capped to 5), never creates
-     * an Instrument. The frontend debounces calls to this endpoint.
+     * proxies the lookup provider's candidates (capped to MAX_SEARCH_RESULTS, shown in a
+     * scrollable 5-row dropdown), never creates an Instrument. The frontend
+     * debounces calls to this endpoint.
      */
     @GetMapping("/search")
     public List<InstrumentSearchResult> search(@RequestParam("q") String query) {
