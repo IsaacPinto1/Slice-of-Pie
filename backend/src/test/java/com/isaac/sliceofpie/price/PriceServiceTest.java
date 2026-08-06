@@ -13,6 +13,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
+import com.isaac.sliceofpie.prices.PriceService;
 import com.isaac.sliceofpie.prices.exception.InvalidPriceException;
 import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
 
@@ -22,8 +23,11 @@ public class PriceServiceTest {
     @Mock
     PriceLookupClient priceLookupClient;
 
+    PriceService priceService;
+
     @BeforeEach
     void setUp(){
+        priceService = new PriceService(priceLookupClient);
     }
 
     @Test
