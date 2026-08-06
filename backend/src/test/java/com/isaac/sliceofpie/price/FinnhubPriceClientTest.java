@@ -40,6 +40,7 @@ public class FinnhubPriceClientTest {
     @Test 
     void throwsTickerNotFoundException_whenTickerIsntFound() { 
         // Finnhub returns a success result with 0s and nulls if a ticker isn't found
+        // rather than surfacing an error - so mimic that here
         mockServer.expect(MockRestRequestMatchers.requestTo(Matchers.containsString("/quote")))
         .andRespond(MockRestResponseCreators.withSuccess("""
                 {"c":0,"d":null,"dp":null,"h":0,"l":0,"o":0,"pc":0,"t":0}

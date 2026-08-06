@@ -10,7 +10,7 @@ public class PriceExceptionHandler {
 
     @ExceptionHandler(InvalidPriceException.class)
     public ProblemDetail handleNotFound(InvalidPriceException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, ex.getMessage());
     }
 
     @ExceptionHandler(TickerNotFoundException.class)

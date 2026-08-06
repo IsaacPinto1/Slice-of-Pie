@@ -19,6 +19,8 @@ public class PriceController {
 
     @GetMapping
     public PriceResponse getPrice(@RequestParam("ticker") String ticker){
+        // No ticker validation occurs here because this should only be called
+        // from existing instruments, which have validated tickers
         return priceService.getPrice(ticker);
     }
 }
