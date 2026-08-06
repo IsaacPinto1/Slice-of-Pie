@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class PriceExceptionHandler {
 
-    @ExceptionHandler(PriceNotFoundException.class)
-    public ProblemDetail handleNotFound(PriceNotFoundException ex) {
+    @ExceptionHandler(InvalidPriceException.class)
+    public ProblemDetail handleNotFound(InvalidPriceException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
