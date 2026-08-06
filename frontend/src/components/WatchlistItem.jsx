@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getThesis } from "../api/thesis";
+import { getPrice } from "../api/price";
 import ThesisEditor from "./ThesisEditor";
 
 export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) {
@@ -7,6 +8,7 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
     const [loadingThesis, setLoadingThesis] = useState(true);
     const [removing, setRemoving] = useState(false);
     const [confirmingRemove, setConfirmingRemove] = useState(false);
+    const [price, setPrice] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -37,6 +39,15 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
             setConfirmingRemove(false);
         }
     };
+
+    const handlePrice = async () => {
+        try{
+            const res = await getPrice(ticker);
+            setPrice(res.data.price);
+        } catch {
+            alert("Error getting price")
+        }
+    }
 
     return (
         <div className="watchlist-card">
@@ -72,6 +83,13 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
                     </button>
                 )}
             </div>
+
+            <div>{price}</div>
+
+            <button
+            onClick={()=>handlePrice()}>
+                refresh Price
+            </button>
 
             {loadingThesis ? (
                 <div className="loading-row" style={{ padding: "8px 0" }}>

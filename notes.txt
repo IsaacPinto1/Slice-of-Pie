@@ -6,3 +6,22 @@ If pulling all of one object with a foreign key, can eagerly grab all the others
 Let cancelled = false and then return () => {cancelled = true} prevents in-flight processes from updating a component that has changed/
 unmounted. The return is a function that gets run whenever the component unmounts or refreshes, so it effectively
 cancels out all in-flight processes.
+
+Error handling done by registering exceptions with an exception handler, which get looked at if an error bubbles up past the controller.
+Since RuntimeExceptions are unchecked our custom exceptions should be runtime exceptions.
+
+Mapping from external API -> DTOs happens by mapping field names, so has to match exactly
+
+When DTOs get returned from controller, they get sent to frontend as JSON as whatever record we defined.
+
+For API design, you have 3 options:
+    1. Path variable e.g /instrument/{id}. Use when identifying a specific object
+    2. Query Param e.g ?q= or ?symbol=. Use for filtering, search, paging (generally short things)
+    3. Request body. Data itself being created or replaced
+
+
+If passing JSON as body, have to include -H "Content-Type: application/json" to indicate you're sending JSON
+
+Implementation specific tests should exist *alongside* the implementation agnostic tests. E.g there should be one test
+that mocks the specific client/abstract contract to test a service, and then a deeper test that tests concrete implementations
+which mock the server (don't actually call the API)
