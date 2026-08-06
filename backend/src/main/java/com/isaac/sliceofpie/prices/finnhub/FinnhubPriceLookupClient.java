@@ -44,6 +44,11 @@ public class FinnhubPriceLookupClient implements PriceLookupClient{
             throw new TickerNotFoundException("Price not found for ticker '" + ticker + "'", e);
         }
 
+        if (response == null || response.t() == 0) {
+            throw new TickerNotFoundException(
+                    "Price not found for ticker '" + ticker + "'");
+        }
+
         // Mapping happens right here, at the edge - nothing downstream ever
         // sees a raw Finnhub shape.
         return new PriceResponse(response.c());

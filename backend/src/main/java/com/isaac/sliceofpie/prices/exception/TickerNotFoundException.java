@@ -6,4 +6,8 @@ public class TickerNotFoundException extends RuntimeException {
     public TickerNotFoundException(String message, Throwable cause){
         super(message, cause);
     }
+
+    public TickerNotFoundException(String message){
+        super(message);
+    }
 }

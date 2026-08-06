@@ -23,7 +23,8 @@ public class FinnhubDtos {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record FinnhubPriceResult(
-            BigDecimal c
+            BigDecimal c,
+            double t
     ) {}
     
 }
