@@ -35,7 +35,7 @@ public class PriceServiceTest {
         BigDecimal price = new BigDecimal(158);
         Mockito.when(priceLookupClient.getPrice("PLTR")).thenReturn(new PriceResponse(price));
 
-        PriceResponse response = priceLookupClient.getPrice("PLTR");
+        PriceResponse response = priceService.getPrice("PLTR");
         assertEquals(response.price(), price);
     }
 
@@ -43,7 +43,7 @@ public class PriceServiceTest {
     void tickersearch_throwsexception_fornullprice() {
         Mockito.when(priceLookupClient.getPrice("PLTR")).thenReturn(new PriceResponse(null));
 
-        assertThatThrownBy(()->priceLookupClient.getPrice("PLTR"))
+        assertThatThrownBy(()->priceService.getPrice("PLTR"))
         .isInstanceOf(InvalidPriceException.class)
         .hasMessageContaining("PLTR");
     }
@@ -52,7 +52,7 @@ public class PriceServiceTest {
     void tickersearch_throwsexception_fornegative() {
         Mockito.when(priceLookupClient.getPrice("PLTR")).thenReturn(PriceResponse.from(-1));
 
-        assertThatThrownBy(()->priceLookupClient.getPrice("PLTR"))
+        assertThatThrownBy(()->priceService.getPrice("PLTR"))
         .isInstanceOf(InvalidPriceException.class)
         .hasMessageContaining("PLTR");
     }
