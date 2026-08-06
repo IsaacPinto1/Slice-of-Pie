@@ -39,10 +39,11 @@ public class FinnhubPriceClientTest {
 
     @Test 
     void throwsTickerNotFoundException_whenTickerIsntFound() { 
+        // Finnhub returns a success result with 0s and nulls if a ticker isn't found
         mockServer.expect(MockRestRequestMatchers.requestTo(Matchers.containsString("/quote")))
         .andRespond(MockRestResponseCreators.withSuccess("""
                 {"c":0,"d":null,"dp":null,"h":0,"l":0,"o":0,"pc":0,"t":0}
-                """, MediaType.APPLICATION_JSON)); // simulates a Finnhub 429 
+                """, MediaType.APPLICATION_JSON)); 
 
         Assertions.assertThatThrownBy(() -> client.getPrice("zzz_notfound"))
                 .isInstanceOf(TickerNotFoundException.class)
