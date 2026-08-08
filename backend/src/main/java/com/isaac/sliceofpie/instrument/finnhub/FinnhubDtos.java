@@ -20,11 +20,4 @@ public class FinnhubDtos {
             String symbol,
             String type
     ) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record FinnhubPriceResult(
-            BigDecimal c,
-            double t
-    ) {}
-    
 }

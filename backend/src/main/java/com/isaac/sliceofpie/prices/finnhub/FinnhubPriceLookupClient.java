@@ -6,7 +6,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.isaac.sliceofpie.instrument.finnhub.FinnhubDtos.FinnhubPriceResult;
+import com.isaac.sliceofpie.prices.finnhub.FinnhubDtos.FinnhubPriceResult;
 import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
 import com.isaac.sliceofpie.prices.exception.TickerNotFoundException;
 import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
