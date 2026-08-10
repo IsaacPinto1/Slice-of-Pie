@@ -26,6 +26,8 @@ Backend:
 
     If passing JSON as body, have to include -H "Content-Type: application/json" to indicate you're sending JSON
 
+    Each @Entity should have its own respository, and everything else shouldn't use it unless it has to.
+
 Testing:
 
     Implementation specific tests should exist *alongside* the implementation agnostic tests. E.g there should be one test
