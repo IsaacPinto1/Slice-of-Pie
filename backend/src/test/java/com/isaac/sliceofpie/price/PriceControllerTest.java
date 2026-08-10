@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
+import com.isaac.sliceofpie.instrument.lookup.InstrumentLookupClient;
 import com.isaac.sliceofpie.prices.PriceController;
 import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
 import com.isaac.sliceofpie.prices.PriceService;
@@ -46,11 +48,13 @@ class PriceControllerTest {
     @Mock
     PriceLookupClient priceLookupClient;
 
+    InstrumentResolutionService instrumentResolutionService;
+
     MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        PriceService priceService = new PriceService(priceLookupClient);
+        PriceService priceService = new PriceService(priceLookupClient, instrumentResolutionService);
         PriceController controller = new PriceController(priceService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new PriceExceptionHandler())

@@ -42,7 +42,7 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
 
     const handlePrice = async () => {
         try{
-            const res = await getPrice(ticker);
+            const res = await getPrice(instrumentId);
             setPrice(res.data.price);
         } catch {
             alert("Error getting price")

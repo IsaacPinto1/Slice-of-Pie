@@ -1,0 +1,2 @@
+ALTER TABLE instrument ADD COLUMN price DOUBLE;
+ALTER TABLE instrument ADD COLUMN priceUpdatedAt TIMESTAMPTZ;
