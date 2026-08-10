@@ -1,7 +1,6 @@
 package com.isaac.sliceofpie.prices.finnhub;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

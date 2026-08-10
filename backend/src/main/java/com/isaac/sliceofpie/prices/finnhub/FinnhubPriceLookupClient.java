@@ -3,6 +3,7 @@ package com.isaac.sliceofpie.prices.finnhub;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -12,19 +13,16 @@ import com.isaac.sliceofpie.prices.exception.TickerNotFoundException;
 import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
 
 @Component
-public class FinnhubPriceLookupClient implements PriceLookupClient{
-    
-    private static final String BASE_URL = "https://finnhub.io/api/v1";
+public class FinnhubPriceLookupClient implements PriceLookupClient {
 
     private final RestClient restClient;
     private final String apiKey;
 
-    public FinnhubPriceLookupClient(@Value("${finnhub.api.key}") String apiKey,
-                                    RestClient.Builder restClientBuilder) {
+    public FinnhubPriceLookupClient(
+            @Value("${finnhub.api.key}") String apiKey,
+            @Qualifier("finnhubRestClientBuilder") RestClient.Builder restClientBuilder) {
         this.apiKey = apiKey;
-        this.restClient = restClientBuilder
-                .baseUrl(BASE_URL)
-                .build();
+        this.restClient = restClientBuilder.build();
     }
 
     @Override

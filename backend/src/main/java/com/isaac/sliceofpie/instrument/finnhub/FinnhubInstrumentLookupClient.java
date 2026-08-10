@@ -4,6 +4,7 @@ import com.isaac.sliceofpie.instrument.InstrumentDtos.InstrumentSearchResult;
 import com.isaac.sliceofpie.instrument.exception.InstrumentLookupException;
 import com.isaac.sliceofpie.instrument.finnhub.FinnhubDtos.FinnhubSearchResponse;
 import com.isaac.sliceofpie.instrument.lookup.InstrumentLookupClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -33,16 +34,14 @@ import java.util.List;
 @Component
 public class FinnhubInstrumentLookupClient implements InstrumentLookupClient {
 
-    private static final String BASE_URL = "https://finnhub.io/api/v1";
-
     private final RestClient restClient;
     private final String apiKey;
 
-    public FinnhubInstrumentLookupClient(@Value("${finnhub.api.key}") String apiKey) {
+    public FinnhubInstrumentLookupClient(
+            @Value("${finnhub.api.key}") String apiKey,
+            @Qualifier("finnhubRestClientBuilder") RestClient.Builder restClientBuilder) {
         this.apiKey = apiKey;
-        this.restClient = RestClient.builder()
-                .baseUrl(BASE_URL)
-                .build();
+        this.restClient = restClientBuilder.build();
     }
 
     @Override

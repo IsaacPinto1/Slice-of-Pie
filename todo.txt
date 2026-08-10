@@ -13,9 +13,4 @@ resizing one ticker shouldn't resize whole row
 
 Portfolio positions
 
-Price Data
-
 Aggregation (single /dashboard API)
-
-Ticker search
- - Need to ensure only valid tickers can be added (needs to reference something - maybe a dropdown menu)?

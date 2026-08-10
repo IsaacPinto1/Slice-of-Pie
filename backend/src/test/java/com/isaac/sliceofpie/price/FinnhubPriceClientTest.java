@@ -11,6 +11,7 @@ import org.springframework.web.client.RestClient;
 import org.hamcrest.Matchers;
 import org.springframework.test.web.client.match.MockRestRequestMatchers;
 
+import com.isaac.sliceofpie.config.FinnhubClientConfig;
 import com.isaac.sliceofpie.prices.exception.TickerNotFoundException;
 import com.isaac.sliceofpie.prices.finnhub.FinnhubPriceLookupClient;
 import org.assertj.core.api.Assertions;
@@ -22,7 +23,9 @@ public class FinnhubPriceClientTest {
 
     @BeforeEach 
     void setUp() { 
-        RestClient.Builder builder = RestClient.builder(); 
+        // Mirrors what FinnhubClientConfig.finnhubRestClientBuilder does in
+        // production - the client itself no longer sets a base URL.
+        RestClient.Builder builder = RestClient.builder().baseUrl(FinnhubClientConfig.FINNHUB_BASE_URL);
         mockServer = MockRestServiceServer.bindTo(builder).build(); 
         client = new FinnhubPriceLookupClient("test-api-key", builder); 
     } 
