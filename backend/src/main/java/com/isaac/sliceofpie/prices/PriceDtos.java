@@ -9,5 +9,9 @@ public class PriceDtos {
             BigDecimal bigPrice = new BigDecimal(number);
             return new PriceResponse(bigPrice);
         }
+        public static PriceResponse from(double number){
+            BigDecimal bigPrice = new BigDecimal(number);
+            return new PriceResponse(bigPrice);
+        }
     }
 }

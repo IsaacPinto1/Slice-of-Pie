@@ -25,6 +25,10 @@ public class Instrument {
     @Column(name = "created_at", insertable = false, updatable = false)
     private Instant createdAt;
 
+    private double price;
+
+    private Instant priceUpdatedAt;
+
     protected Instrument() {
         // required by JPA
     }
@@ -53,5 +57,18 @@ public class Instrument {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public Instant getPriceUpdatedAt() {
+        return priceUpdatedAt;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
+        priceUpdatedAt = Instant.now();
     }
 }

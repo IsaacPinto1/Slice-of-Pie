@@ -17,10 +17,15 @@ public class PriceController {
         this.priceService = priceService;
     }
 
+    /* No ticker validation occurs here because this should only be called
+    from existing instruments, which have validated tickers */
     @GetMapping
-    public PriceResponse getPrice(@RequestParam("ticker") String ticker){
-        // No ticker validation occurs here because this should only be called
-        // from existing instruments, which have validated tickers
-        return priceService.getPrice(ticker);
+    public PriceResponse getPrice(@RequestParam("instrumentId") Long instrumentId){
+        return priceService.getPrice(instrumentId);
+    }
+
+    @GetMapping("/force")
+    public PriceResponse forceLatestPrice(@RequestParam("instrumentId") Long instrumentId){
+        return priceService.forceLatestPrice(instrumentId);
     }
 }

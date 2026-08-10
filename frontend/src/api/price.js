@@ -1,5 +1,5 @@
 import api from './axios'
 
-export function getPrice(ticker){
-    return api.get('/price', {params: {ticker : ticker}} )
+export function getPrice(instrumentId){
+    return api.get('/price', {params: {instrumentId: instrumentId}} )
 }

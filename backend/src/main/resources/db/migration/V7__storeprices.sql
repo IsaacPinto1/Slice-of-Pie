@@ -1,0 +1,2 @@
+ALTER TABLE instrument ADD COLUMN price DOUBLE PRECISION;
+ALTER TABLE instrument ADD COLUMN price_updated_at TIMESTAMPTZ;
