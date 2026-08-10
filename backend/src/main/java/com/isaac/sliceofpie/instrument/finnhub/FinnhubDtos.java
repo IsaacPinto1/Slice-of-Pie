@@ -19,5 +19,4 @@ public class FinnhubDtos {
             String symbol,
             String type
     ) {}
-    
 }
