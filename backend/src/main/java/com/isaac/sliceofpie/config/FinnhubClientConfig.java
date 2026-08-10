@@ -26,7 +26,7 @@ public class FinnhubClientConfig {
 
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    public RestClient.Builder finnhubRestClientBuilder(RestClient.Builder restClientBuilder) {
-        return restClientBuilder.baseUrl(FINNHUB_BASE_URL);
+    public RestClient.Builder finnhubRestClientBuilder() {
+        return RestClient.builder().baseUrl(FINNHUB_BASE_URL);
     }
 }

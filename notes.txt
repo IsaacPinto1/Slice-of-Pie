@@ -1,27 +1,40 @@
-Ok to store things multiple places on the Java/server side - so long as it's in only one place storage/database side (can save lookups). Important
-part is that there's only 1 source of truth (storage side)
+Frontend:
 
-If pulling all of one object with a foreign key, can eagerly grab all the others from the other table to save N+1 problem.
+    Let cancelled = false and then return () => {cancelled = true} prevents in-flight processes from updating a component that has changed/
+    unmounted. The return is a function that gets run whenever the component unmounts or refreshes, so it effectively
+    cancels out all in-flight processes.
+    
+Database:
 
-Let cancelled = false and then return () => {cancelled = true} prevents in-flight processes from updating a component that has changed/
-unmounted. The return is a function that gets run whenever the component unmounts or refreshes, so it effectively
-cancels out all in-flight processes.
+    Ok to store things multiple places on the Java/server side - so long as it's in only one place storage/database side (can save lookups). Important
+    part is that there's only 1 source of truth (storage side)
 
-Error handling done by registering exceptions with an exception handler, which get looked at if an error bubbles up past the controller.
-Since RuntimeExceptions are unchecked our custom exceptions should be runtime exceptions.
+    If pulling all of one object with a foreign key, can eagerly grab all the others from the other table to save N+1 problem.
 
-Mapping from external API -> DTOs happens by mapping field names, so has to match exactly
+Backend:
+    Error handling done by registering exceptions with an exception handler, which get looked at if an error bubbles up past the controller.
+    Since RuntimeExceptions are unchecked our custom exceptions should be runtime exceptions.
 
-When DTOs get returned from controller, they get sent to frontend as JSON as whatever record we defined.
+    Mapping from external API -> DTOs happens by mapping field names, so has to match exactly
 
-For API design, you have 3 options:
-    1. Path variable e.g /instrument/{id}. Use when identifying a specific object
-    2. Query Param e.g ?q= or ?symbol=. Use for filtering, search, paging (generally short things)
-    3. Request body. Data itself being created or replaced
+    When DTOs get returned from controller, they get sent to frontend as JSON as whatever record we defined.
 
+    For passing info in an API, you have 3 options:
+        1. Path variable e.g /instrument/{id}. Use when identifying a specific object
+        2. Query Param e.g ?q= or ?symbol=. Use for filtering, search, paging (generally short things)
+        3. Request body. Data itself being created or replaced
 
-If passing JSON as body, have to include -H "Content-Type: application/json" to indicate you're sending JSON
+    If passing JSON as body, have to include -H "Content-Type: application/json" to indicate you're sending JSON
 
-Implementation specific tests should exist *alongside* the implementation agnostic tests. E.g there should be one test
-that mocks the specific client/abstract contract to test a service, and then a deeper test that tests concrete implementations
-which mock the server (don't actually call the API)
+Testing:
+
+    Implementation specific tests should exist *alongside* the implementation agnostic tests. E.g there should be one test
+    that mocks the specific client/abstract contract to test a service, and then a deeper test that tests concrete implementations
+    which mock the server (don't actually call the API)
+
+    Web-level E2E tests should always exist so that the HTTP hitting the frontend is checked. If the API is any more
+    than database retrieval, backend unit tests should also exist (can be both implementaiton specific and agnostic if calling
+    external API, leading to 3 total tests)
+
+    Controller tests need to use MockMvc so that the ExceptionHandler is triggered. If not, you'll see the exceptions being
+    thrown, but not that they're being caught and turned into the problem details with the specific statuses you chose.
