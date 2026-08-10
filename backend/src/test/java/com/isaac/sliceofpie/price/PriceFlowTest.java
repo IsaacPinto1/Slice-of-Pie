@@ -1,10 +1,13 @@
 package com.isaac.sliceofpie.price;
 
 import com.isaac.sliceofpie.auth.AuthTestUtils;
+import com.isaac.sliceofpie.instrument.Instrument;
+import com.isaac.sliceofpie.instrument.InstrumentRepository;
 import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
 import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
@@ -41,12 +44,23 @@ class PriceFlowTest {
     @MockitoBean
     private PriceLookupClient priceLookupClient;
 
+    @Autowired
+    private InstrumentRepository instrumentRepository;
+
     private String token;
+
+    // /price now takes an instrumentId, not a raw ticker - so unlike before,
+    // getting a price requires a real, already-persisted Instrument row to
+    // resolve the id from. Created directly via the repository rather than
+    // through /instruments so this test isn't also exercising (and coupled
+    // to) the search/create flow, which is covered separately.
+    private Instrument aapl;
 
     @BeforeEach
     void setup(@LocalServerPort int port) {
         client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
         token = AuthTestUtils.registerAndLogin(client, AuthTestUtils.uniqueUsername(), "1234");
+        aapl = instrumentRepository.save(new Instrument("AAPL", "Apple", null));
     }
 
     @Test
@@ -55,7 +69,7 @@ class PriceFlowTest {
                 .thenReturn(new PriceResponse(new BigDecimal("158")));
 
         PriceResponse body = client.get()
-                .uri("/price?ticker=AAPL")
+                .uri("/price?instrumentId=" + aapl.getId())
                 .header("Authorization", "Bearer " + token)
                 .exchange()
                 .expectStatus().isOk()
@@ -70,7 +84,7 @@ class PriceFlowTest {
     @Test
     void getPrice_requiresAuthentication() {
         client.get()
-                .uri("/price?ticker=AAPL")
+                .uri("/price?instrumentId=" + aapl.getId())
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
