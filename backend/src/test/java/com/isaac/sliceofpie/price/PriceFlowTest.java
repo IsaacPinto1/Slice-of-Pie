@@ -15,6 +15,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -54,22 +55,24 @@ class PriceFlowTest {
     // resolve the id from. Created directly via the repository rather than
     // through /instruments so this test isn't also exercising (and coupled
     // to) the search/create flow, which is covered separately.
-    private Instrument aapl;
+    private Instrument instrument;
+    private String ticker;
 
     @BeforeEach
     void setup(@LocalServerPort int port) {
         client = WebTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
         token = AuthTestUtils.registerAndLogin(client, AuthTestUtils.uniqueUsername(), "1234");
-        aapl = instrumentRepository.save(new Instrument("AAPL", "Apple", null));
+        ticker = "TST" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        instrument = instrumentRepository.save(new Instrument(ticker, "Test Co", null));
     }
 
     @Test
     void getPrice_returnsPrice_whenLookupSucceeds() {
-        when(priceLookupClient.getPrice("AAPL"))
+        when(priceLookupClient.getPrice(ticker))
                 .thenReturn(new PriceResponse(new BigDecimal("158")));
 
         PriceResponse body = client.get()
-                .uri("/price?instrumentId=" + aapl.getId())
+                .uri("/price?instrumentId=" + instrument.getId())
                 .header("Authorization", "Bearer " + token)
                 .exchange()
                 .expectStatus().isOk()
@@ -84,7 +87,7 @@ class PriceFlowTest {
     @Test
     void getPrice_requiresAuthentication() {
         client.get()
-                .uri("/price?instrumentId=" + aapl.getId())
+                .uri("/price?instrumentId=" + instrument.getId())
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
