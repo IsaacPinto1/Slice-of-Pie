@@ -14,7 +14,7 @@ import com.isaac.sliceofpie.broker.BrokerDtos.ClientHoldingResponse;
  * this contract - see the spec's Decision #1. Every implementation must
  * sign requests with just the Personal consumerKey.
  */
-public interface PositionsClient {
+public interface BrokerClient {
 
     /**
      * True if this Personal key currently has at least one connected
