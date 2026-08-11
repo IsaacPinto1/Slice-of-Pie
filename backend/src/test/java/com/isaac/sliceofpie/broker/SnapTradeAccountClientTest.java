@@ -21,6 +21,7 @@ import org.springframework.web.client.RestClient;
 
 import com.isaac.sliceofpie.broker.PositionDtos.BrokerHolding;
 import com.isaac.sliceofpie.broker.exception.BrokerLookupException;
+import com.isaac.sliceofpie.broker.snaptrade.SnapTradeAccountClient;
 import com.isaac.sliceofpie.broker.snaptrade.SnapTradeSigningClient;
 import com.isaac.sliceofpie.config.SnapTradeClientConfig;
 
