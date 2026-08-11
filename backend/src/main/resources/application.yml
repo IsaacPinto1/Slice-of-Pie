@@ -25,5 +25,10 @@ finnhub:
   api:
     key: ${FINNHUB_API_KEY}
 
+snaptrade:
+  client-id: ${SNAPTRADE_CLIENT_ID:}
+  consumer-key: ${SNAPTRADE_CONSUMER_KEY:}
+  allowed-usernames: ${SNAPTRADE_ALLOWED_USERNAMES:}
+
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
