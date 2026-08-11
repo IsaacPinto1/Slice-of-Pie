@@ -9,17 +9,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Gate for the entire broker/positions feature. A SnapTrade Personal key
- * represents one real person's brokerage (see the spec's "Single-identity
- * caveat"), but this app's User model supports multiple accounts. Without
- * this guard, any signed-up app user could hit /positions/sync and pull
- * the key owner's real Robinhood holdings into their own account.
- *
- * Restricts the feature to a configured allowlist of app usernames, and
- * is invisible by design: callers throw BrokerAccessDeniedException,
- * which BrokerExceptionHandler maps to a plain 404 - not a 403 - so a
- * non-allowed authenticated user hitting these endpoints sees exactly
- * what they'd see for a route that doesn't exist.
+ * Ensures that on deployment only a secret list of usernames can access the brokerage
+ * through the broker-specific env vars. Importantly, usernames should be taken out of
+ * a token on call, not passed as a String (requires users to know the username and password)
  */
 @Component
 public class BrokerAccessGuard {

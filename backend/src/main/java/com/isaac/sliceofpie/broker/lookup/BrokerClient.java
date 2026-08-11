@@ -9,25 +9,20 @@ import com.isaac.sliceofpie.broker.PositionDtos.BrokerHolding;
  * purpose, mirroring InstrumentLookupClient/PriceLookupClient's shape -
  * nothing outside this package and its implementations should know
  * SnapTrade specifically is behind it.
- *
- * Personal-key only: no registerUser, no userId/userSecret anywhere in
- * this contract - see the spec's Decision #1. Every implementation must
- * sign requests with just the Personal consumerKey.
  */
 public interface BrokerClient {
 
-    /**
-     * True if this Personal key currently has at least one connected
-     * brokerage account. Backs GET /broker/status and guards
-     * PositionService#sync.
+    /*
+    * Method to check that positions can be pulled for the user. Current implementation
+    * stores credentials as env vars for personal use, might need to be updated to take
+    * user info later on
      */
     boolean hasConnectedAccounts();
 
     /**
-     * Aggregated holdings for this user, normalized to BrokerHolding. For
-     * now there's no storage/retrieval of account ids, since this should
-     * stay general across holdings providers, but additional methods
-     * might need to be built out to support future capabilities.
+     * Aggregated holdings for this user, normalized to BrokerHolding. As above,
+     * current implementation requires no input because of env vars, but this might
+     * change if ever used for more than one user (no plans currently)
      */
     List<BrokerHolding> fetchHoldings();
 

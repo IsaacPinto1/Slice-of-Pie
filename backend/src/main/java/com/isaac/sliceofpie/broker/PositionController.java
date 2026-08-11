@@ -15,20 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Single controller for the whole broker/positions feature: connection
  * status, reading synced positions, and triggering a sync.
+ * 
+ * For now this supports a single user per-app, supported via env vars.
+ * In future there would need to be a register user flow with an appropriate
+ * provider. Current implementation makes sense for a personal use case
  *
- * NOTE (Single-identity caveat, see spec): a brokerage Personal key
- * represents one real person's brokerage. Any app user who passes
- * BrokerAccessGuard sees the SAME underlying provider identity - there is
- * no way to distinguish "app user A's brokerage" from "app user B's" at
- * the provider layer. BrokerAccessGuard's allowlist is what keeps this
- * from being a real data-exposure bug if this app ever gets a second real
- * user; don't remove it without re-reading the spec's caveat section.
- *
- * No POST /broker/connect and no connection-portal callback route - this
- * Personal key is linked to Robinhood out-of-band (via the provider's own
- * dashboard), not through an in-app registration flow. This controller
- * only reports whether that out-of-band link currently has connected
- * accounts, and lets the allowed user pull/sync positions from it.
  */
 @RestController
 public class PositionController {
