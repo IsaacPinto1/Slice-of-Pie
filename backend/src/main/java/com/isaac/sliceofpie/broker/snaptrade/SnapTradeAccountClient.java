@@ -3,7 +3,7 @@ package com.isaac.sliceofpie.broker.snaptrade;
 import org.springframework.stereotype.Component;
 
 import com.isaac.sliceofpie.broker.BrokerDtos.ClientHoldingResponse;
-import com.isaac.sliceofpie.broker.lookup.PositionsClient;
+import com.isaac.sliceofpie.broker.lookup.BrokerClient;
 import com.isaac.sliceofpie.broker.snaptrade.SnapTradeDtos.SnapTradeAccount;
 import com.isaac.sliceofpie.broker.snaptrade.SnapTradeDtos.SnapTradePosition;
 
@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class SnapTradeAccountClient implements PositionsClient {
+public class SnapTradeAccountClient implements BrokerClient {
 
     private final SnapTradeSigningClient snapTradeClient;
 

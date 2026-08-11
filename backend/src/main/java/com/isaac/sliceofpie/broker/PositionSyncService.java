@@ -1,8 +1,8 @@
 package com.isaac.sliceofpie.broker;
 
 import com.isaac.sliceofpie.broker.exception.BrokerNotConnectedException;
-import com.isaac.sliceofpie.broker.lookup.PositionsClient;
-import com.isaac.sliceofpie.broker.lookup.PositionsClient.SnapTradeHolding;
+import com.isaac.sliceofpie.broker.lookup.BrokerClient;
+import com.isaac.sliceofpie.broker.lookup.BrokerClient.SnapTradeHolding;
 import com.isaac.sliceofpie.instrument.Instrument;
 import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
 
@@ -20,11 +20,11 @@ public class PositionSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(PositionSyncService.class);
 
-    private final PositionsClient snapTradeClient;
+    private final BrokerClient snapTradeClient;
     private final InstrumentResolutionService instrumentResolutionService;
     private final PositionRepository positionRepository;
 
-    public PositionSyncService(PositionsClient snapTradeClient,
+    public PositionSyncService(BrokerClient snapTradeClient,
                                 InstrumentResolutionService instrumentResolutionService,
                                 PositionRepository positionRepository) {
         this.snapTradeClient = snapTradeClient;

@@ -1,14 +1,14 @@
 package com.isaac.sliceofpie.broker;
 
-import com.isaac.sliceofpie.broker.lookup.PositionsClient;
+import com.isaac.sliceofpie.broker.lookup.BrokerClient;
 import org.springframework.stereotype.Service;
 
 @Service
 public class BrokerConnectionService {
 
-    private final PositionsClient snapTradeClient;
+    private final BrokerClient snapTradeClient;
 
-    public BrokerConnectionService(PositionsClient snapTradeClient) {
+    public BrokerConnectionService(BrokerClient snapTradeClient) {
         this.snapTradeClient = snapTradeClient;
     }
 
