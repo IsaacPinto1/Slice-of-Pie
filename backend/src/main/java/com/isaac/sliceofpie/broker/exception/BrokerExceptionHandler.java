@@ -24,6 +24,17 @@ public class BrokerExceptionHandler {
     public ProblemDetail handleLookupError(BrokerLookupException ex) {
         return ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_GATEWAY,
-                "Failed to reach SnapTrade: " + ex.getMessage());
+                "Failed to reach brokerage provider: " + ex.getMessage());
+    }
+
+    @ExceptionHandler(RequestSigningException.class)
+    public ProblemDetail handleSigningError(RequestSigningException ex) {
+        // Our own fault (bad key config, serialization failure) - not the
+        // provider's, and not a client error. Never echo ex.getMessage()
+        // here: it can reference key material or payload details that
+        // shouldn't leave the server.
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to sign outgoing request");
     }
 }

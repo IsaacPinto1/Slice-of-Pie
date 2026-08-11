@@ -1,8 +1,13 @@
 package com.isaac.sliceofpie.broker.snaptrade;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.isaac.sliceofpie.broker.exception.BrokerLookupException;
+import com.isaac.sliceofpie.broker.exception.RequestSigningException;
+
+import tools.jackson.databind.ObjectMapper;
+
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.json.JsonParseException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -18,10 +23,17 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+/**
+ * Handles SnapTrade's HMAC request-signing scheme and issues signed GET
+ * requests against it. Only SnapTradeAccountClient should call this - it
+ * stays SnapTrade-specific by design so nothing else in the broker package
+ * ever needs to know how SnapTrade signs a request. Failures are surfaced
+ * as the generic BrokerLookupException / RequestSigningException from
+ * broker.exception, never a SnapTrade-named type, so callers outside this
+ * package don't leak the provider's identity either.
+ */
 @Component
 public class SnapTradeSigningClient {
-
-    private static final String BASE_URL = "https://api.snaptrade.com";
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -29,14 +41,12 @@ public class SnapTradeSigningClient {
     private final String consumerKey;
 
     public SnapTradeSigningClient(
-            RestClient.Builder restClientBuilder,
+            @Qualifier("snapTradeRestClientBuilder") RestClient.Builder restClientBuilder,
             ObjectMapper objectMapper,
-            @Value("${snaptrade.client-id}") String clientId,
-            @Value("${snaptrade.consumer-key}") String consumerKey
+            @Value("${snaptrade.client-id:}") String clientId,
+            @Value("${snaptrade.consumer-key:}") String consumerKey
     ) {
-        this.restClient = restClientBuilder
-                .baseUrl(BASE_URL)
-                .build();
+        this.restClient = restClientBuilder.build();
         this.objectMapper = objectMapper;
         this.clientId = clientId;
         this.consumerKey = consumerKey;
@@ -65,7 +75,7 @@ public class SnapTradeSigningClient {
                     .body(responseType);
 
         } catch (RestClientException e) {
-            throw new SnapTradeException(
+            throw new BrokerLookupException(
                     "SnapTrade GET request failed: " + path,
                     e
             );
@@ -125,10 +135,10 @@ public class SnapTradeSigningClient {
 
             return Base64.getEncoder().encodeToString(hash);
 
-        } catch (JsonProcessingException |
+        } catch (JsonParseException |
                  NoSuchAlgorithmException |
                  InvalidKeyException e) {
-            throw new SnapTradeSigningException(
+            throw new RequestSigningException(
                     "Failed to generate SnapTrade request signature",
                     e
             );

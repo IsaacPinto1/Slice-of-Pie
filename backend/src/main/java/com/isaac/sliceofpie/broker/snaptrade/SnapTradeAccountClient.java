@@ -2,14 +2,25 @@ package com.isaac.sliceofpie.broker.snaptrade;
 
 import org.springframework.stereotype.Component;
 
-import com.isaac.sliceofpie.broker.BrokerDtos.ClientHoldingResponse;
+import com.isaac.sliceofpie.broker.PositionDtos.BrokerHolding;
 import com.isaac.sliceofpie.broker.lookup.BrokerClient;
 import com.isaac.sliceofpie.broker.snaptrade.SnapTradeDtos.SnapTradeAccount;
+import com.isaac.sliceofpie.broker.snaptrade.SnapTradeDtos.SnapTradeInstrument;
 import com.isaac.sliceofpie.broker.snaptrade.SnapTradeDtos.SnapTradePosition;
+import com.isaac.sliceofpie.broker.snaptrade.SnapTradeDtos.SnapTradePositionsResponse;
 
+import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * SnapTrade-backed implementation of BrokerClient. This package is the
+ * only place in the codebase that should know SnapTrade's API shape -
+ * everything outside it talks to BrokerClient / BrokerHolding. Swapping
+ * providers means writing a new implementation of BrokerClient and
+ * rewiring the bean; nothing else should need to change.
+ */
 @Component
 public class SnapTradeAccountClient implements BrokerClient {
 
@@ -19,20 +30,72 @@ public class SnapTradeAccountClient implements BrokerClient {
         this.snapTradeClient = snapTradeClient;
     }
 
+    @Override
     public boolean hasConnectedAccounts() {
-        // Should roughly call the below and confirm there's a connected account
-        return snapTradeClient.get(
-                "/api/v1/accounts",
-                Map.of(),
-                boolean.class
-        );
+        SnapTradeAccount[] accounts = listAccounts();
+        return accounts.length > 0;
     }
 
-    public List<ClientHoldingResponse> fetchHoldings() {
-        return snapTradeClient.get(
-                "/api/v1/accounts/" + accountId,
-                Map.of(),
-                SnapTradeAccount.class
-        );
+    /**
+     * Aggregates positions across every account connected under this
+     * Personal key. A Position is keyed one-per-(user, instrument), not
+     * one-per-(user, account, instrument), so the same ticker held in more
+     * than one account is summed into a single BrokerHolding here rather
+     * than left for PositionService to reconcile.
+     */
+    @Override
+    public List<BrokerHolding> fetchHoldings() {
+        SnapTradeAccount[] accounts = listAccounts();
+        if (accounts.length == 0) {
+            return List.of();
+        }
+
+        // ticker -> holding, so quantities from the same ticker in
+        // different accounts add up instead of one overwriting another.
+        Map<String, BrokerHolding> holdingsByTicker = new LinkedHashMap<>();
+
+        for (SnapTradeAccount account : accounts) {
+            SnapTradePositionsResponse response = snapTradeClient.get(
+                    "/accounts/" + account.id() + "/positions/all",
+                    Map.of(),
+                    SnapTradePositionsResponse.class);
+
+            if (response == null || response.results() == null) {
+                continue;
+            }
+
+            for (SnapTradePosition position : response.results()) {
+                mergeHolding(holdingsByTicker, position);
+            }
+        }
+
+        return List.copyOf(holdingsByTicker.values());
+    }
+
+    private SnapTradeAccount[] listAccounts() {
+        SnapTradeAccount[] accounts =
+                snapTradeClient.get("/accounts", Map.of(), SnapTradeAccount[].class);
+        return accounts == null ? new SnapTradeAccount[0] : accounts;
+    }
+
+    private void mergeHolding(Map<String, BrokerHolding> holdingsByTicker, SnapTradePosition position) {
+        SnapTradeInstrument instrument = position.instrument();
+        if (instrument == null || instrument.symbol() == null || position.units() == null) {
+            // Cash-equivalent or otherwise non-instrument positions don't
+            // map to a Position row - skip rather than fail the whole sync.
+            return;
+        }
+
+        String ticker = instrument.symbol();
+        BigDecimal quantity = position.units();
+        String name = instrument.description();
+
+        holdingsByTicker.merge(
+                ticker,
+                new BrokerHolding(ticker, name, quantity),
+                (existing, incoming) -> new BrokerHolding(
+                        ticker,
+                        existing.name() != null ? existing.name() : incoming.name(),
+                        existing.quantity().add(incoming.quantity())));
     }
 }
