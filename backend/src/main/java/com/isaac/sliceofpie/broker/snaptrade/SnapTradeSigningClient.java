@@ -1,11 +1,11 @@
 package com.isaac.sliceofpie.broker.snaptrade;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-
-import tools.jackson.databind.ObjectMapper;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -16,9 +16,10 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 @Component
-public class SnapTradeClient {
+public class SnapTradeSigningClient {
 
     private static final String BASE_URL = "https://api.snaptrade.com";
 
@@ -27,7 +28,7 @@ public class SnapTradeClient {
     private final String clientId;
     private final String consumerKey;
 
-    public SnapTradeClient(
+    public SnapTradeSigningClient(
             RestClient.Builder restClientBuilder,
             ObjectMapper objectMapper,
             @Value("${snaptrade.client-id}") String clientId,
@@ -41,56 +42,56 @@ public class SnapTradeClient {
         this.consumerKey = consumerKey;
     }
 
-    public <T> T get(String path, Class<T> responseType) {
-        return execute("GET", path, null, responseType);
-    }
-
-    public <T, B> T post(String path, B body, Class<T> responseType) {
-        return execute("POST", path, body, responseType);
-    }
-
-    private <T> T execute(
-            String method,
+    public <T> T get(
             String path,
-            Object body,
+            Map<String, String> queryParameters,
             Class<T> responseType
     ) {
         long timestamp = Instant.now().getEpochSecond();
 
-        String queryString =
-                "clientId=" + clientId +
-                "&timestamp=" + timestamp;
+        String queryString = buildQueryString(queryParameters, timestamp);
 
         String signature = generateSignature(
                 path,
                 queryString,
-                body
+                null
         );
 
         try {
-            RestClient.RequestHeadersSpec<?> request;
-
-            if ("POST".equals(method)) {
-                request = restClient.post()
-                        .uri(path + "?" + queryString)
-                        .header("Signature", signature)
-                        .body(body);
-            } else {
-                request = restClient.get()
-                        .uri(path + "?" + queryString)
-                        .header("Signature", signature);
-            }
-
-            return request
+            return restClient.get()
+                    .uri(path + "?" + queryString)
+                    .header("Signature", signature)
                     .retrieve()
                     .body(responseType);
 
         } catch (RestClientException e) {
             throw new SnapTradeException(
-                    "SnapTrade " + method + " request failed: " + path,
+                    "SnapTrade GET request failed: " + path,
                     e
             );
         }
+    }
+
+    private String buildQueryString(
+            Map<String, String> queryParameters,
+            long timestamp
+    ) {
+        String additionalParameters = queryParameters.entrySet()
+                .stream()
+                .map(entry ->
+                        entry.getKey() + "=" + entry.getValue()
+                )
+                .collect(Collectors.joining("&"));
+
+        String authenticationParameters =
+                "clientId=" + clientId +
+                "&timestamp=" + timestamp;
+
+        if (additionalParameters.isEmpty()) {
+            return authenticationParameters;
+        }
+
+        return authenticationParameters + "&" + additionalParameters;
     }
 
     private String generateSignature(
@@ -99,21 +100,24 @@ public class SnapTradeClient {
             Object body
     ) {
         try {
+            /*
+             * SnapTrade requires the signature payload to have
+             * alphabetically sorted keys.
+             */
             Map<String, Object> payload = new TreeMap<>();
-
             payload.put("content", body);
             payload.put("path", path);
             payload.put("query", queryString);
 
             String data = objectMapper.writeValueAsString(payload);
 
-            SecretKeySpec key = new SecretKeySpec(
+            SecretKeySpec secretKey = new SecretKeySpec(
                     consumerKey.getBytes(StandardCharsets.UTF_8),
                     "HmacSHA256"
             );
 
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(key);
+            mac.init(secretKey);
 
             byte[] hash = mac.doFinal(
                     data.getBytes(StandardCharsets.UTF_8)
@@ -125,7 +129,7 @@ public class SnapTradeClient {
                  NoSuchAlgorithmException |
                  InvalidKeyException e) {
             throw new SnapTradeSigningException(
-                    "Failed to generate SnapTrade signature",
+                    "Failed to generate SnapTrade request signature",
                     e
             );
         }

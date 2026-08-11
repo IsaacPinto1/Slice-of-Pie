@@ -1,7 +1,8 @@
 package com.isaac.sliceofpie.broker.lookup;
 
-import java.math.BigDecimal;
 import java.util.List;
+
+import com.isaac.sliceofpie.broker.BrokerDtos.ClientHoldingResponse;
 
 /**
  * Contract for talking to SnapTrade. Provider-agnostic on purpose, mirroring
@@ -23,11 +24,10 @@ public interface PositionsClient {
     boolean hasConnectedAccounts();
 
     /**
-     * Aggregated holdings across every connected account under this
-     * Personal key - one flat list, no per-account breakdown (decision #5
-     * in the spec).
+     * Aggregated holdings for this user. For now there's no storage/retrieval
+     * of account ids, since this should be general for holdings providers, but
+     * additional methods might need to be built out to support future capabilities.
      */
-    List<SnapTradeHolding> fetchHoldings();
+    List<ClientHoldingResponse> fetchHoldings();
 
-    record SnapTradeHolding(String ticker, String name, BigDecimal quantity) {}
 }
