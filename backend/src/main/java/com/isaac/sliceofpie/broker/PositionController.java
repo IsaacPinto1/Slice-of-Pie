@@ -47,21 +47,25 @@ public class PositionController {
         return new BrokerStatusResponse(positionService.hasConnections());
     }
 
+    /* Makes an external call to pull and store positions. Should be run before
+    * attempting a GET so that positions are loaded. Returns the same shape as the GET
+    * method so this can be used on the frontend to replace existing state.
+     */
+    @PostMapping("/positions/sync")
+    public PositionResponse sync(Authentication authentication) {
+        UserPrincipal principal = allow(authentication);
+        return toResponse(positionService.sync(principal.id()));
+    }
+
     // Mirrors WatchlistController#getWatchlist, plus the allowlist gate -
-    // see BrokerAccessGuard.
+    // see BrokerAccessGuard. Note that this just pulls from the database,
+    // sync is required first to load positions
     @GetMapping("/positions")
     public PositionResponse getPositions(Authentication authentication) {
         UserPrincipal principal = allow(authentication);
         return toResponse(positionService.listForUser(principal.id()));
     }
 
-    // Returns the same response shape as GET, so the frontend can just
-    // replace its state with this response instead of re-fetching.
-    @PostMapping("/positions/sync")
-    public PositionResponse sync(Authentication authentication) {
-        UserPrincipal principal = allow(authentication);
-        return toResponse(positionService.sync(principal.id()));
-    }
 
     private UserPrincipal allow(Authentication authentication) {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();

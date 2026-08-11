@@ -39,12 +39,8 @@ public class PositionService {
      * Live call to the provider every time - with a Personal key there's no
      * local BrokerConnection row to check against; "connected" is purely a
      * question the provider itself can answer.
-     *
-     * TODO(perf): if this turns out to be too slow/frequent on every
-     * dashboard load, add a small local status-cache table purely as a
-     * performance optimization (NOT anything credential-bearing - no
-     * userSecret equivalent exists to cache). Explicitly skipped for v1
-     * per product decision.
+     * 
+     * TODO: Can be cached potentially in future.
      */
     public boolean hasConnections() {
         return brokerClient.hasConnectedAccounts();
@@ -55,8 +51,7 @@ public class PositionService {
     }
 
     /**
-     * Full reconciliation sync (decision #7 - a diff, not just an upsert):
-     * upserts a Position for every holding the provider currently reports,
+     * Full reconciliation sync: upserts a Position for every holding the provider currently reports,
      * then deletes any local Position for this user whose instrument isn't
      * in that response.
      *
@@ -72,7 +67,7 @@ public class PositionService {
             throw new BrokerNotConnectedException();
         }
 
-        List<BrokerHolding> holdings = brokerClient.fetchHoldings();
+        List<BrokerHolding> holdings = brokerClient.fetchHoldings(); // Pulls actual positions
         List<Long> resolvedInstrumentIds = new ArrayList<>();
 
         for (BrokerHolding holding : holdings) {
