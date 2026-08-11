@@ -2,6 +2,7 @@
 Add cost basis so % changes can be calculated
 
 UI Changes:
+    - Load when verified user is detected is janky
     - Card-based view
     - Focus on window focus (prevent stale state)
     - stocks already in watchlist should be marked as followed somehow in the search
