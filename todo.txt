@@ -11,6 +11,11 @@ UI Changes:
     - portfolio value
 
 
+Edge case behaviour when snaptrade credentials are unset?
+
+Null price behaviour handling. Should be a flyway migration handler that just fills
+them with 0, and a regression test
+
 Thesis statements should persist after removal from watchlist but maybe get marked as stale?
 
 Add linter
