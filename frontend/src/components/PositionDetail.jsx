@@ -1,30 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { getThesis } from "../api/thesis";
-import { getPrice, forceLatestPrice } from "../api/price";
+import { forceLatestPrice } from "../api/price";
 import ThesisEditor from "./ThesisEditor";
 
-// Minimum time between force-refresh clicks - mirrors WatchlistItem's
+// Minimum time between force-refresh clicks - mirrors WatchlistDetail's
 // same cooldown/reasoning.
 const FORCE_REFRESH_COOLDOWN_MS = 5000;
 
-// Mirrors WatchlistItem's price-fetching and thesis behavior almost
-// exactly. The meaningful differences are structural, not just visual, so
-// this stays a separate component rather than a branch inside
-// WatchlistItem:
-//   - no remove action - a Position only ever changes via a provider sync
-//     (PositionService#sync's full reconciliation), never a manual delete
-//   - a quantity, sourced from the actual brokerage holding
-//   - a computed market value (quantity * price), which is the whole
-//     reason a position needs its own layout instead of reusing
-//     WatchlistItem's price-row as-is
-export default function PositionItem({ instrumentId, ticker, name, quantity }) {
+// Focused/large view for a single held position, shown in the detail
+// panel once its sidebar card is selected. Unlike the old PositionItem,
+// this never fetches a price on load - `item.price` already came from
+// PositionItemResponse when the sidebar list loaded, so opening a
+// position is a pure render, not a network call. "Force update price" is
+// the one deliberate exception: it always hits the provider, and its
+// result overrides the list price locally until the next sync or a
+// different position is selected.
+export default function PositionDetail({ item }) {
+    const { instrumentId, ticker, name, quantity } = item;
     const [thesis, setThesis] = useState("");
     const [loadingThesis, setLoadingThesis] = useState(true);
-    const [price, setPrice] = useState(null);
-    const [priceLoading, setPriceLoading] = useState(true);
+    const [forcedPrice, setForcedPrice] = useState(null);
     const [forcing, setForcing] = useState(false);
     const lastForceAtRef = useRef(0);
 
+    // No need to reset forcedPrice/thesis on instrumentId change here -
+    // DetailPanel keys this component by instrumentId, so switching
+    // positions remounts it with fresh state entirely.
     useEffect(() => {
         let cancelled = false;
 
@@ -45,25 +46,6 @@ export default function PositionItem({ instrumentId, ticker, name, quantity }) {
         return () => { cancelled = true; };
     }, [instrumentId]);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        const loadPrice = async () => {
-            setPriceLoading(true);
-            try {
-                const res = await getPrice(instrumentId);
-                if (!cancelled) setPrice(res.data.price);
-            } catch {
-                if (!cancelled) setPrice(null);
-            } finally {
-                if (!cancelled) setPriceLoading(false);
-            }
-        };
-
-        loadPrice();
-        return () => { cancelled = true; };
-    }, [instrumentId]);
-
     const handleForceRefresh = async () => {
         const now = Date.now();
         if (forcing || now - lastForceAtRef.current < FORCE_REFRESH_COOLDOWN_MS) return;
@@ -72,7 +54,7 @@ export default function PositionItem({ instrumentId, ticker, name, quantity }) {
         setForcing(true);
         try {
             const res = await forceLatestPrice(instrumentId);
-            setPrice(res.data.price);
+            setForcedPrice(res.data.price);
         } catch {
             alert("Error getting price");
         } finally {
@@ -80,13 +62,14 @@ export default function PositionItem({ instrumentId, ticker, name, quantity }) {
         }
     };
 
+    const price = forcedPrice ?? item.price;
     const marketValue = price != null ? Number(quantity) * Number(price) : null;
 
     return (
-        <div className="position-card">
+        <div className="detail-card">
             <div className="watchlist-card-head">
                 <div>
-                    <div className="ticker-symbol">{ticker}</div>
+                    <div className="ticker-symbol detail-ticker">{ticker}</div>
                     {name && <div className="ticker-name">{name}</div>}
                 </div>
                 <span className="position-badge">Held</span>
@@ -100,19 +83,13 @@ export default function PositionItem({ instrumentId, ticker, name, quantity }) {
                 <div className="position-metric">
                     <span className="position-metric-label">Price</span>
                     <span className="position-metric-value">
-                        {priceLoading ? <span className="spinner" /> : price != null ? `$${price}` : "—"}
+                        {price != null ? `$${price}` : "—"}
                     </span>
                 </div>
                 <div className="position-metric">
                     <span className="position-metric-label">Value</span>
                     <span className="position-metric-value position-metric-value-accent">
-                        {priceLoading ? (
-                            <span className="spinner" />
-                        ) : marketValue != null ? (
-                            `$${marketValue.toFixed(2)}`
-                        ) : (
-                            "—"
-                        )}
+                        {marketValue != null ? `$${marketValue.toFixed(2)}` : "—"}
                     </span>
                 </div>
             </div>

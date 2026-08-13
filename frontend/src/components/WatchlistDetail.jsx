@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getThesis } from "../api/thesis";
-import { getPrice, forceLatestPrice } from "../api/price";
+import { forceLatestPrice } from "../api/price";
 import ThesisEditor from "./ThesisEditor";
 
 // Minimum time between force-refresh clicks. Every click is a guaranteed
@@ -10,16 +10,23 @@ import ThesisEditor from "./ThesisEditor";
 // resolve in well under a second.
 const FORCE_REFRESH_COOLDOWN_MS = 5000;
 
-export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) {
+// Focused/large view for a single watchlist ticker, shown in the detail
+// panel once its sidebar card is selected. Like PositionDetail, this
+// never fetches a price on load - `item.price` already came from
+// WatchlistItemResponse when the sidebar list loaded.
+export default function WatchlistDetail({ item, onRemove }) {
+    const { instrumentId, ticker, name } = item;
     const [thesis, setThesis] = useState("");
     const [loadingThesis, setLoadingThesis] = useState(true);
     const [removing, setRemoving] = useState(false);
     const [confirmingRemove, setConfirmingRemove] = useState(false);
-    const [price, setPrice] = useState(null);
-    const [priceLoading, setPriceLoading] = useState(true);
+    const [forcedPrice, setForcedPrice] = useState(null);
     const [forcing, setForcing] = useState(false);
     const lastForceAtRef = useRef(0);
 
+    // No need to reset forcedPrice/confirmingRemove/thesis on instrumentId
+    // change here - DetailPanel keys this component by instrumentId, so
+    // switching tickers remounts it with fresh state entirely.
     useEffect(() => {
         let cancelled = false;
 
@@ -37,27 +44,6 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
         };
 
         loadThesis();
-        return () => { cancelled = true; };
-    }, [instrumentId]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        // Cached read on load: cheap, and keeps whatever's actually being
-        // looked at fresh even between the scheduled background refreshes.
-        const loadPrice = async () => {
-            setPriceLoading(true);
-            try {
-                const res = await getPrice(instrumentId);
-                if (!cancelled) setPrice(res.data.price);
-            } catch {
-                if (!cancelled) setPrice(null);
-            } finally {
-                if (!cancelled) setPriceLoading(false);
-            }
-        };
-
-        loadPrice();
         return () => { cancelled = true; };
     }, [instrumentId]);
 
@@ -79,7 +65,7 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
         setForcing(true);
         try {
             const res = await forceLatestPrice(instrumentId);
-            setPrice(res.data.price);
+            setForcedPrice(res.data.price);
         } catch {
             alert("Error getting price");
         } finally {
@@ -87,11 +73,13 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
         }
     };
 
+    const price = forcedPrice ?? item.price;
+
     return (
-        <div className="watchlist-card">
+        <div className="detail-card">
             <div className="watchlist-card-head">
                 <div>
-                    <div className="ticker-symbol">{ticker}</div>
+                    <div className="ticker-symbol detail-ticker">{ticker}</div>
                     {name && <div className="ticker-name">{name}</div>}
                 </div>
                 {confirmingRemove ? (
@@ -124,7 +112,7 @@ export default function WatchlistItem({ instrumentId, ticker, name, onRemove }) 
 
             <div className="price-row">
                 <span className="price-value">
-                    {priceLoading ? <span className="spinner" /> : price != null ? `$${price}` : "—"}
+                    {price != null ? `$${price}` : "—"}
                 </span>
                 <button
                     type="button"
