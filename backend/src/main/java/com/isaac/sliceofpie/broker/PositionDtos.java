@@ -16,7 +16,12 @@ public class PositionDtos {
             Long instrumentId,
             String ticker,
             String name,
-            BigDecimal quantity
+            BigDecimal quantity,
+            // Read straight off the Instrument row instead of the live
+            // provider - see WatchlistDtos.WatchlistItemResponse.price for
+            // the full reasoning (kept once there since both DTOs pull it
+            // the same way).
+            BigDecimal price
     ) {
         public static PositionItemResponse from(Position position) {
             Instrument instrument = position.getInstrument();
@@ -24,7 +29,8 @@ public class PositionDtos {
                     instrument.getId(),
                     instrument.getTicker(),
                     instrument.getName(),
-                    position.getQuantity()
+                    position.getQuantity(),
+                    BigDecimal.valueOf(instrument.getPrice())
             );
         }
     }
