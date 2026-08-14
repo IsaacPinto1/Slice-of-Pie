@@ -2,7 +2,7 @@
 // "Watchlist" groups in the sidebar. Kept content-agnostic (title/count
 // in, children out) rather than positions/watchlist-specific, same
 // reasoning as the old ViewToggle being value/onChange generic.
-export default function SidebarSection({ title, count, collapsed, onToggleCollapse, children }) {
+export default function SidebarSection({ title, count, total, collapsed, onToggleCollapse, children }) {
     return (
         <div className="sidebar-section">
             <button
@@ -25,6 +25,9 @@ export default function SidebarSection({ title, count, collapsed, onToggleCollap
                     <polyline points="6 9 12 15 18 9" />
                 </svg>
                 <span className="sidebar-section-title">{title}</span>
+                {total != null && (
+                    <span className="sidebar-section-total">{total}</span>
+                )}
                 {typeof count === "number" && (
                     <span className="sidebar-section-count">{count}</span>
                 )}

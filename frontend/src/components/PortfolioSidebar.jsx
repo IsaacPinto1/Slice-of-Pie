@@ -1,5 +1,22 @@
+import { useMemo } from "react";
 import SidebarSection from "./SidebarSection";
 import SidebarItemCard from "./SidebarItemCard";
+
+// Sum of quantity * price across all synced positions. Purely a
+// client-side derivation of data already on hand (PositionItemResponse
+// carries both fields) - no extra endpoint needed, and it recomputes
+// whenever the positions list changes.
+function usePositionsValue(positions) {
+    return useMemo(() => {
+        const total = positions.reduce((sum, item) => {
+            const quantity = Number(item.quantity);
+            const price = Number(item.price);
+            if (!Number.isFinite(quantity) || !Number.isFinite(price)) return sum;
+            return sum + quantity * price;
+        }, 0);
+        return `$${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }, [positions]);
+}
 
 // Sidebar for the sidebar + focused-item layout: a collapsible
 // "Positions" section stacked on top of a collapsible "Watchlist"
@@ -19,12 +36,15 @@ export default function PortfolioSidebar({
     watchlistCollapsed,
     onToggleWatchlist,
 }) {
+    const positionsValue = usePositionsValue(positions);
+
     return (
         <nav className="sidebar" aria-label="Positions and watchlist">
             {brokerAllowed && connected && (
                 <SidebarSection
                     title="Positions"
                     count={positions.length}
+                    total={positions.length > 0 && !positionsLoading ? positionsValue : null}
                     collapsed={positionsCollapsed}
                     onToggleCollapse={onTogglePositions}
                 >
