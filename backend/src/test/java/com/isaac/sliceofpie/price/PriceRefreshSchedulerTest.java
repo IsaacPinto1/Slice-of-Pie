@@ -41,6 +41,8 @@ class PriceRefreshSchedulerTest {
     void refreshDueInstruments_refreshesEveryInstrumentInTheDueSlot() {
         when(instrumentRepository.findIdsByIdModulo(eq(PriceRefreshScheduler.REFRESH_WINDOW_MINUTES), anyInt()))
                 .thenReturn(List.of(1L, 2L, 3L));
+        when(instrumentRepository.findIdsWithNullPriceUpdatedAt())
+                .thenReturn(List.of());
 
         new PriceRefreshScheduler(instrumentRepository, priceService).refreshDueInstruments();
 
@@ -53,6 +55,8 @@ class PriceRefreshSchedulerTest {
     void refreshDueInstruments_oneFailureDoesNotStopTheRestOfTheBatch() {
         when(instrumentRepository.findIdsByIdModulo(eq(PriceRefreshScheduler.REFRESH_WINDOW_MINUTES), anyInt()))
                 .thenReturn(List.of(1L, 2L, 3L));
+        when(instrumentRepository.findIdsWithNullPriceUpdatedAt())
+                .thenReturn(List.of());
         when(priceService.forceLatestPrice(2L))
                 .thenThrow(new InvalidPriceException("Retrieved price invalid for ticker 'BAD'"));
 
@@ -67,9 +71,38 @@ class PriceRefreshSchedulerTest {
     void refreshDueInstruments_noDueInstruments_callsPriceServiceZeroTimes() {
         when(instrumentRepository.findIdsByIdModulo(eq(PriceRefreshScheduler.REFRESH_WINDOW_MINUTES), anyInt()))
                 .thenReturn(List.of());
+        when(instrumentRepository.findIdsWithNullPriceUpdatedAt())
+                .thenReturn(List.of());
 
         new PriceRefreshScheduler(instrumentRepository, priceService).refreshDueInstruments();
 
         verify(priceService, never()).forceLatestPrice(anyLong());
+    }
+
+    @Test
+    void refreshDueInstruments_alsoRefreshesInstrumentsWithNullPriceUpdatedAt_regardlessOfSlot() {
+        // Freshly-created instrument (e.g. id=99) isn't in this minute's
+        // slot, but has never had a price fetched.
+        when(instrumentRepository.findIdsByIdModulo(eq(PriceRefreshScheduler.REFRESH_WINDOW_MINUTES), anyInt()))
+                .thenReturn(List.of(1L));
+        when(instrumentRepository.findIdsWithNullPriceUpdatedAt())
+                .thenReturn(List.of(99L));
+
+        new PriceRefreshScheduler(instrumentRepository, priceService).refreshDueInstruments();
+
+        verify(priceService, times(1)).forceLatestPrice(1L);
+        verify(priceService, times(1)).forceLatestPrice(99L);
+    }
+
+    @Test
+    void refreshDueInstruments_dedupesInstrumentAppearingInBothSlotAndNullList() {
+        when(instrumentRepository.findIdsByIdModulo(eq(PriceRefreshScheduler.REFRESH_WINDOW_MINUTES), anyInt()))
+                .thenReturn(List.of(1L));
+        when(instrumentRepository.findIdsWithNullPriceUpdatedAt())
+                .thenReturn(List.of(1L));
+
+        new PriceRefreshScheduler(instrumentRepository, priceService).refreshDueInstruments();
+
+        verify(priceService, times(1)).forceLatestPrice(1L);
     }
 }

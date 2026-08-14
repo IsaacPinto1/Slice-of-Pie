@@ -1,3 +1,13 @@
+History via alpaca: https://docs.alpaca.markets/us/reference/stockbars
+
+Stop calling prices on instrument load - scheduled refresh should keep reasonably updated. Just increase
+frequency of update (price is a field of the instrument, should just stay cached)
+
+Sync should really only happen on login, and then you can click or something. Shouldn't run every refresh
+
+Thesis statements should be tagged to a price point
+
+watchlist/position collisions not resolving properly
 
 Add cost basis so % changes can be calculated
 
@@ -10,6 +20,11 @@ UI Changes:
     -resizing one ticker shouldn't resize whole row
     - portfolio value
 
+
+Edge case behaviour when snaptrade credentials are unset?
+
+Null price behaviour handling. Should be a flyway migration handler that just fills
+them with 0, and a regression test
 
 Thesis statements should persist after removal from watchlist but maybe get marked as stale?
 

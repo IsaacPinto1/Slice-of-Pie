@@ -3,7 +3,10 @@ package com.isaac.sliceofpie.prices;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +20,8 @@ import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
 @Service
 public class PriceService {
 
+    private static final Logger log = LoggerFactory.getLogger(PriceService.class);
+
     private final PriceLookupClient priceLookupClient;
 
     private final InstrumentResolutionService instrumentResolutionService;
@@ -26,6 +31,36 @@ public class PriceService {
     public PriceService(PriceLookupClient priceLookupClient, InstrumentResolutionService instrumentResolutionService){
         this.priceLookupClient = priceLookupClient;
         this. instrumentResolutionService= instrumentResolutionService;
+    }
+
+    /*
+    * Best-effort price fetch for use at instrument-creation time (see
+    * InstrumentResolutionService.createInstrument()). Deliberately NOT
+    * @Transactional and never throws: it's called from inside that
+    * method's own transaction, on an already-managed Instrument, so the
+    * caller can just apply the result directly (instrument.setPrice(...))
+    * without a second transaction/persistence-context involved.
+    * 
+    * Keeping this untransactional means a failure here doesn't
+    * derail instrument creation (which happens even if an exception
+    * in a @Transactional is caught)
+    *
+    * Returns empty on any failure (invalid price, provider error, etc.) -
+    * the caller leaves the instrument at price=0/priceUpdatedAt=null in
+    * that case, and PriceRefreshScheduler's null-price sweep retries it on
+    * its next tick.
+    */
+    public Optional<BigDecimal> tryFetchPrice(String ticker) {
+        try {
+            PriceResponse res = priceLookupClient.getPrice(ticker);
+            if (!isValidPrice(res.price())) {
+                return Optional.empty();
+            }
+            return Optional.of(res.price());
+        } catch (Exception e) {
+            log.warn("Failed to fetch initial price for ticker '{}'", ticker, e);
+            return Optional.empty();
+        }
     }
 
     /*
@@ -49,7 +84,7 @@ public class PriceService {
         String ticker = instrument.getTicker();
         PriceResponse res = priceLookupClient.getPrice(ticker);
 
-        if(res.price() == null || res.price().compareTo(BigDecimal.ZERO) < 0) {
+        if (!isValidPrice(res.price())) {
             throw new InvalidPriceException("Retrieved price invalid for ticker '" + ticker + "'");
         }
 
@@ -64,5 +99,9 @@ public class PriceService {
     public PriceResponse forceLatestPrice(Long instrumentId) {
         Instrument instrument = instrumentResolutionService.getById(instrumentId);
         return forceLatestPrice(instrument);
+    }
+
+    private static boolean isValidPrice(BigDecimal price) {
+        return price != null && price.compareTo(BigDecimal.ZERO) >= 0;
     }
 }

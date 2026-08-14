@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import Watchlist from "../components/Watchlist";
-import Positions from "../components/Positions";
-import ViewToggle from "../components/ViewToggle";
+import PortfolioSidebar from "../components/PortfolioSidebar";
+import DetailPanel from "../components/DetailPanel";
 import TickerSearch from "../components/TickerSearch";
 import { addTicker, getWatchlist, removeTicker } from "../api/watchlist";
 import { createInstrument } from "../api/instruments";
@@ -21,14 +20,24 @@ export default function Dashboard() {
     // fails (deliberately indistinguishable from a 404 on a route that
     // doesn't exist - see BrokerAccessGuard), so the safe default is
     // "assume not allowed" and only turn the feature on once it's actually
-    // confirmed. That's what keeps this whole section - toggle included -
-    // showing zero evidence positions exist for anyone not on the allowlist.
+    // confirmed. That's what keeps the whole Positions sidebar section -
+    // and everything in it - showing zero evidence positions exist for
+    // anyone not on the allowlist.
     const [brokerAllowed, setBrokerAllowed] = useState(false);
     const [connected, setConnected] = useState(false);
     const [positions, setPositions] = useState([]);
     const [positionsLoading, setPositionsLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
-    const [view, setView] = useState("both");
+
+    // Which sidebar row is open in the detail panel. Deliberately just a
+    // {type, instrumentId} pointer rather than a copy of the row itself -
+    // the actual item is resolved fresh from positions/watchlist below on
+    // every render (see `activeDetail`), so a sync, an add, or a remove is
+    // reflected in whatever's open without a separate "refresh the
+    // selection" effect, and a removed row just makes the panel empty again.
+    const [selected, setSelected] = useState(null);
+    const [positionsCollapsed, setPositionsCollapsed] = useState(false);
+    const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
 
     // sync: true runs a fresh sync against the provider first (used on
     // initial load and the manual "Sync" button); sync: false just re-reads
@@ -138,6 +147,15 @@ export default function Dashboard() {
         window.location.href = "/login";
     };
 
+    // Resolve the selection pointer against the live lists on every render
+    // - see the `selected` state comment above.
+    const selectedRow = selected
+        ? (selected.type === "position"
+            ? positions.find((p) => p.instrumentId === selected.instrumentId)
+            : watchlist.find((w) => w.instrumentId === selected.instrumentId))
+        : null;
+    const activeDetail = selectedRow ? { type: selected.type, item: selectedRow } : null;
+
     return (
         <>
             <header className="app-header">
@@ -153,7 +171,7 @@ export default function Dashboard() {
                 </div>
             </header>
 
-            <div className="page">
+            <div className="page page-wide">
                 {loading ? (
                     <div className="loading-row">
                         <span className="spinner" />
@@ -165,7 +183,6 @@ export default function Dashboard() {
                             <h1>{brokerAllowed ? "Your portfolio" : "Your watchlist"}</h1>
                             {brokerAllowed && connected && (
                                 <div className="dashboard-head-actions">
-                                    <ViewToggle value={view} onChange={setView} />
                                     <button
                                         className="secondary small"
                                         onClick={handleSyncPositions}
@@ -179,35 +196,30 @@ export default function Dashboard() {
 
                         {error && <div className="banner error">{error}</div>}
 
-                        {(!brokerAllowed || view !== "positions") && (
-                            <div className="ticker-search">
-                                <label htmlFor="ticker-search-input">Add to watchlist</label>
-                                <TickerSearch onSelect={handleSelectResult} />
-                            </div>
-                        )}
+                        <div className="ticker-search">
+                            <label htmlFor="ticker-search-input">Add to watchlist</label>
+                            <TickerSearch onSelect={handleSelectResult} />
+                        </div>
 
-                        {brokerAllowed && connected && (view === "positions" || view === "both") && (
-                            <section className="dashboard-section">
-                                {view === "both" && <h2 className="dashboard-section-title">Positions</h2>}
-                                {positionsLoading ? (
-                                    <div className="loading-row">
-                                        <span className="spinner" />
-                                        <span>Loading positions...</span>
-                                    </div>
-                                ) : (
-                                    <Positions items={positions} />
-                                )}
-                            </section>
-                        )}
+                        <div className="dashboard-layout">
+                            <PortfolioSidebar
+                                brokerAllowed={brokerAllowed}
+                                connected={connected}
+                                positions={positions}
+                                positionsLoading={positionsLoading}
+                                watchlist={watchlist}
+                                selected={selected}
+                                onSelect={setSelected}
+                                positionsCollapsed={positionsCollapsed}
+                                onTogglePositions={() => setPositionsCollapsed((c) => !c)}
+                                watchlistCollapsed={watchlistCollapsed}
+                                onToggleWatchlist={() => setWatchlistCollapsed((c) => !c)}
+                            />
 
-                        {(!brokerAllowed || !connected || view === "watchlist" || view === "both") && (
-                            <section className="dashboard-section">
-                                {brokerAllowed && connected && view === "both" && (
-                                    <h2 className="dashboard-section-title">Watchlist</h2>
-                                )}
-                                <Watchlist items={watchlist} onRemove={handleRemove} />
-                            </section>
-                        )}
+                            <main className="detail-panel">
+                                <DetailPanel selected={activeDetail} onRemoveWatchlistItem={handleRemove} />
+                            </main>
+                        </div>
                     </>
                 )}
             </div>

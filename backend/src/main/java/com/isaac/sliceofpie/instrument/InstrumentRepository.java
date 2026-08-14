@@ -18,4 +18,10 @@ public interface InstrumentRepository extends JpaRepository<Instrument, Long> {
     // otherwise need to re-fetch anyway to safely mutate/persist.
     @Query("SELECT i.id FROM Instrument i WHERE MOD(i.id, :modulus) = :remainder")
     List<Long> findIdsByIdModulo(@Param("modulus") int modulus, @Param("remainder") int remainder);
+
+    // Freshly-created instruments (price never fetched yet, priceUpdatedAt
+    // still null) haven't necessarily reached their slot in the modulo
+    // rotation above - see PriceRefreshScheduler for why that matters.
+    @Query("SELECT i.id FROM Instrument i WHERE i.priceUpdatedAt IS NULL")
+    List<Long> findIdsWithNullPriceUpdatedAt();
 }

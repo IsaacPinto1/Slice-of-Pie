@@ -3,11 +3,15 @@ package com.isaac.sliceofpie.instrument;
 import com.isaac.sliceofpie.instrument.InstrumentDtos.InstrumentSearchResult;
 import com.isaac.sliceofpie.instrument.exception.InstrumentNotFoundException;
 import com.isaac.sliceofpie.instrument.lookup.InstrumentLookupClient;
+import com.isaac.sliceofpie.prices.PriceService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class InstrumentResolutionService {
@@ -21,11 +25,19 @@ public class InstrumentResolutionService {
 
     private final InstrumentRepository instrumentRepository;
     private final InstrumentLookupClient instrumentLookupClient;
+    private final PriceService priceService;
 
+    // @Lazy breaks the circular dependency: PriceService already depends on
+    // this class (to resolve instrumentId -> Instrument for getPrice() /
+    // forceLatestPrice()), so it's injected here as a lazy proxy - it isn't
+    // actually resolved until the first call to it, by which point this
+    // bean has already finished constructing.
     public InstrumentResolutionService(InstrumentRepository instrumentRepository,
-                                        InstrumentLookupClient instrumentLookupClient) {
+                                        InstrumentLookupClient instrumentLookupClient,
+                                        @Lazy PriceService priceService) {
         this.instrumentRepository = instrumentRepository;
         this.instrumentLookupClient = instrumentLookupClient;
+        this.priceService = priceService;
     }
 
     /**
@@ -86,7 +98,20 @@ public class InstrumentResolutionService {
     private Instrument createInstrument(String ticker, String name) {
         try {
             Instrument instrument = new Instrument(ticker, name, null);
-            return instrumentRepository.save(instrument);
+            instrument = instrumentRepository.save(instrument);
+
+            // Best-effort, synchronous, same transaction: if it succeeds,
+            // the Instrument object we return already carries the real
+            // price, so the caller (frontend) never has to know a price
+            // was defaulted. If it fails (bad ticker, provider hiccup,
+            // etc.) tryFetchPrice() swallows it - the instrument still gets
+            // created at price=0/priceUpdatedAt=null, and
+            // PriceRefreshScheduler's null-price sweep retries it later.
+            Optional<BigDecimal> price = priceService.tryFetchPrice(ticker);
+            if(price.isPresent()){
+                instrument.setPrice(price.get().doubleValue());
+            }
+            return instrument;
         } catch (DataIntegrityViolationException e) {
             // Another request resolved the same ticker concurrently (unique
             // constraint tripped) - fetch the winner instead of failing.
