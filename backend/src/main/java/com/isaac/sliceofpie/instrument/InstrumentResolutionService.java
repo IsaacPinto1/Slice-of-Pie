@@ -9,7 +9,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class InstrumentResolutionService {
@@ -105,8 +107,10 @@ public class InstrumentResolutionService {
             // etc.) tryFetchPrice() swallows it - the instrument still gets
             // created at price=0/priceUpdatedAt=null, and
             // PriceRefreshScheduler's null-price sweep retries it later.
-            priceService.tryFetchPrice(ticker).ifPresent(price -> instrument.setPrice(price.doubleValue()));
-
+            Optional<BigDecimal> price = priceService.tryFetchPrice(ticker);
+            if(price.isPresent()){
+                instrument.setPrice(price.get().doubleValue());
+            }
             return instrument;
         } catch (DataIntegrityViolationException e) {
             // Another request resolved the same ticker concurrently (unique

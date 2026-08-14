@@ -40,14 +40,10 @@ public class PriceService {
     * method's own transaction, on an already-managed Instrument, so the
     * caller can just apply the result directly (instrument.setPrice(...))
     * without a second transaction/persistence-context involved.
-    *
-    * Routing this through a @Transactional method instead (e.g.
-    * forceLatestPrice) would be risky here even wrapped in try/catch:
-    * Spring's transactional AOP marks a participating transaction
-    * rollback-only the moment an exception leaves a @Transactional method,
-    * REGARDLESS of whether the caller then catches it - so instrument
-    * creation could silently fail to commit even though the exception
-    * looked handled. Keeping this fetch untransactional avoids that trap.
+    * 
+    * Keeping this untransactional means a failure here doesn't
+    * derail instrument creation (which happens even if an exception
+    * in a @Transactional is caught)
     *
     * Returns empty on any failure (invalid price, provider error, etc.) -
     * the caller leaves the instrument at price=0/priceUpdatedAt=null in
