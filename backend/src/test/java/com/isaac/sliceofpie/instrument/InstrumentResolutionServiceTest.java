@@ -3,20 +3,21 @@ package com.isaac.sliceofpie.instrument;
 import com.isaac.sliceofpie.instrument.InstrumentDtos.InstrumentSearchResult;
 import com.isaac.sliceofpie.instrument.exception.InstrumentNotFoundException;
 import com.isaac.sliceofpie.instrument.lookup.InstrumentLookupClient;
+import com.isaac.sliceofpie.prices.PriceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,13 +30,13 @@ class InstrumentResolutionServiceTest {
     private InstrumentLookupClient instrumentLookupClient;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private PriceService priceService;
 
     private InstrumentResolutionService service;
 
     @BeforeEach
     void setUp() {
-        service = new InstrumentResolutionService(instrumentRepository, instrumentLookupClient, eventPublisher);
+        service = new InstrumentResolutionService(instrumentRepository, instrumentLookupClient, priceService);
     }
 
     // ---------- search() - read-only, never touches the database ----------
@@ -97,6 +98,7 @@ class InstrumentResolutionServiceTest {
         when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.empty());
         when(instrumentRepository.save(any(Instrument.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(priceService.tryFetchPrice("AAPL")).thenReturn(Optional.empty());
 
         Instrument instrument = service.create("AAPL", "APPLE INC");
 
@@ -107,19 +109,38 @@ class InstrumentResolutionServiceTest {
     }
 
     @Test
-    void create_publishesInstrumentCreatedEvent_soPriceServiceCanFetchInitialPrice() {
+    void create_setsPriceOnTheReturnedInstrument_whenInitialFetchSucceeds() {
+        // This is what the frontend actually needs: the Instrument object
+        // returned from create() should already carry the real price, not
+        // just whatever eventually lands in the DB - otherwise the create
+        // response hands back price=0 even though a correct price was
+        // fetched a moment later.
         when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.empty());
-        when(instrumentRepository.save(any(Instrument.class))).thenAnswer(invocation -> {
-            Instrument saved = invocation.getArgument(0);
-            // id is normally assigned by the DB (IDENTITY strategy) on
-            // save() - fake that here since we're mocking the repository.
-            ReflectionTestUtils.setField(saved, "id", 42L);
-            return saved;
-        });
+        when(instrumentRepository.save(any(Instrument.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(priceService.tryFetchPrice("AAPL")).thenReturn(Optional.of(new BigDecimal("158")));
 
-        service.create("AAPL", "APPLE INC");
+        Instrument instrument = service.create("AAPL", "APPLE INC");
 
-        verify(eventPublisher).publishEvent(new InstrumentCreatedEvent(42L));
+        assertThat(instrument.getPrice()).isEqualTo(158.0);
+        assertThat(instrument.getPriceUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void create_leavesPriceAtDefault_whenInitialFetchFails() {
+        // tryFetchPrice() is the "safe" best-effort variant - it never
+        // throws, just returns empty - so creation must still succeed and
+        // hand back the instrument at price=0/priceUpdatedAt=null for
+        // PriceRefreshScheduler to pick up later.
+        when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.empty());
+        when(instrumentRepository.save(any(Instrument.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(priceService.tryFetchPrice("AAPL")).thenReturn(Optional.empty());
+
+        Instrument instrument = service.create("AAPL", "APPLE INC");
+
+        assertThat(instrument.getPrice()).isEqualTo(0.0);
+        assertThat(instrument.getPriceUpdatedAt()).isNull();
     }
 
     @Test
@@ -131,7 +152,7 @@ class InstrumentResolutionServiceTest {
 
         assertThat(instrument).isSameAs(existing);
         verify(instrumentRepository, never()).save(any());
-        verifyNoInteractions(eventPublisher);
+        verifyNoInteractions(priceService);
     }
 
     @Test
@@ -139,6 +160,7 @@ class InstrumentResolutionServiceTest {
         when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.empty());
         when(instrumentRepository.save(any(Instrument.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(priceService.tryFetchPrice(anyString())).thenReturn(Optional.empty());
 
         service.create("aapl", "APPLE INC");
 

@@ -3,16 +3,14 @@ package com.isaac.sliceofpie.prices;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.isaac.sliceofpie.instrument.Instrument;
-import com.isaac.sliceofpie.instrument.InstrumentCreatedEvent;
 import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
 import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
 import com.isaac.sliceofpie.prices.exception.InvalidPriceException;
@@ -36,20 +34,36 @@ public class PriceService {
     }
 
     /*
-    * Fires once InstrumentResolutionService's creating transaction commits.
-    * Runs in its own (new) transaction, separate from the one that created
-    * the instrument, so a failure here (bad ticker at the provider,
-    * transient network error, etc.) can never roll back the instrument
-    * creation that already succeeded. Best-effort only - on failure we just
-    * log and leave priceUpdatedAt null, which PriceRefreshScheduler's
-    * null-price sweep will retry on its next tick.
+    * Best-effort price fetch for use at instrument-creation time (see
+    * InstrumentResolutionService.createInstrument()). Deliberately NOT
+    * @Transactional and never throws: it's called from inside that
+    * method's own transaction, on an already-managed Instrument, so the
+    * caller can just apply the result directly (instrument.setPrice(...))
+    * without a second transaction/persistence-context involved.
+    *
+    * Routing this through a @Transactional method instead (e.g.
+    * forceLatestPrice) would be risky here even wrapped in try/catch:
+    * Spring's transactional AOP marks a participating transaction
+    * rollback-only the moment an exception leaves a @Transactional method,
+    * REGARDLESS of whether the caller then catches it - so instrument
+    * creation could silently fail to commit even though the exception
+    * looked handled. Keeping this fetch untransactional avoids that trap.
+    *
+    * Returns empty on any failure (invalid price, provider error, etc.) -
+    * the caller leaves the instrument at price=0/priceUpdatedAt=null in
+    * that case, and PriceRefreshScheduler's null-price sweep retries it on
+    * its next tick.
     */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onInstrumentCreated(InstrumentCreatedEvent event) {
+    public Optional<BigDecimal> tryFetchPrice(String ticker) {
         try {
-            forceLatestPrice(event.instrumentId());
+            PriceResponse res = priceLookupClient.getPrice(ticker);
+            if (!isValidPrice(res.price())) {
+                return Optional.empty();
+            }
+            return Optional.of(res.price());
         } catch (Exception e) {
-            log.warn("Failed to fetch initial price for newly-created instrument id={}", event.instrumentId(), e);
+            log.warn("Failed to fetch initial price for ticker '{}'", ticker, e);
+            return Optional.empty();
         }
     }
 
@@ -74,7 +88,7 @@ public class PriceService {
         String ticker = instrument.getTicker();
         PriceResponse res = priceLookupClient.getPrice(ticker);
 
-        if(res.price() == null || res.price().compareTo(BigDecimal.ZERO) < 0) {
+        if (!isValidPrice(res.price())) {
             throw new InvalidPriceException("Retrieved price invalid for ticker '" + ticker + "'");
         }
 
@@ -89,5 +103,9 @@ public class PriceService {
     public PriceResponse forceLatestPrice(Long instrumentId) {
         Instrument instrument = instrumentResolutionService.getById(instrumentId);
         return forceLatestPrice(instrument);
+    }
+
+    private static boolean isValidPrice(BigDecimal price) {
+        return price != null && price.compareTo(BigDecimal.ZERO) >= 0;
     }
 }

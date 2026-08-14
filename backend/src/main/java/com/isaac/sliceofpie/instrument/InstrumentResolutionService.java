@@ -3,7 +3,8 @@ package com.isaac.sliceofpie.instrument;
 import com.isaac.sliceofpie.instrument.InstrumentDtos.InstrumentSearchResult;
 import com.isaac.sliceofpie.instrument.exception.InstrumentNotFoundException;
 import com.isaac.sliceofpie.instrument.lookup.InstrumentLookupClient;
-import org.springframework.context.ApplicationEventPublisher;
+import com.isaac.sliceofpie.prices.PriceService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,14 +23,19 @@ public class InstrumentResolutionService {
 
     private final InstrumentRepository instrumentRepository;
     private final InstrumentLookupClient instrumentLookupClient;
-    private final ApplicationEventPublisher eventPublisher;
+    private final PriceService priceService;
 
+    // @Lazy breaks the circular dependency: PriceService already depends on
+    // this class (to resolve instrumentId -> Instrument for getPrice() /
+    // forceLatestPrice()), so it's injected here as a lazy proxy - it isn't
+    // actually resolved until the first call to it, by which point this
+    // bean has already finished constructing.
     public InstrumentResolutionService(InstrumentRepository instrumentRepository,
                                         InstrumentLookupClient instrumentLookupClient,
-                                        ApplicationEventPublisher eventPublisher) {
+                                        @Lazy PriceService priceService) {
         this.instrumentRepository = instrumentRepository;
         this.instrumentLookupClient = instrumentLookupClient;
-        this.eventPublisher = eventPublisher;
+        this.priceService = priceService;
     }
 
     /**
@@ -92,14 +98,14 @@ public class InstrumentResolutionService {
             Instrument instrument = new Instrument(ticker, name, null);
             instrument = instrumentRepository.save(instrument);
 
-            // Fetching the initial price happens in PriceService, listening
-            // for this event AFTER this transaction commits - see
-            // InstrumentCreatedEvent. That keeps instrument creation itself
-            // fast and independent of the price provider: if the fetch
-            // fails or is slow, the instrument still exists (price=0,
-            // priceUpdatedAt=null) and PriceRefreshScheduler's null-price
-            // sweep picks it up as a fallback on its next tick.
-            eventPublisher.publishEvent(new InstrumentCreatedEvent(instrument.getId()));
+            // Best-effort, synchronous, same transaction: if it succeeds,
+            // the Instrument object we return already carries the real
+            // price, so the caller (frontend) never has to know a price
+            // was defaulted. If it fails (bad ticker, provider hiccup,
+            // etc.) tryFetchPrice() swallows it - the instrument still gets
+            // created at price=0/priceUpdatedAt=null, and
+            // PriceRefreshScheduler's null-price sweep retries it later.
+            priceService.tryFetchPrice(ticker).ifPresent(price -> instrument.setPrice(price.doubleValue()));
 
             return instrument;
         } catch (DataIntegrityViolationException e) {
