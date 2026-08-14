@@ -3,6 +3,7 @@ package com.isaac.sliceofpie.instrument;
 import com.isaac.sliceofpie.instrument.InstrumentDtos.InstrumentSearchResult;
 import com.isaac.sliceofpie.instrument.exception.InstrumentNotFoundException;
 import com.isaac.sliceofpie.instrument.lookup.InstrumentLookupClient;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,11 +22,14 @@ public class InstrumentResolutionService {
 
     private final InstrumentRepository instrumentRepository;
     private final InstrumentLookupClient instrumentLookupClient;
+    private final ApplicationEventPublisher eventPublisher;
 
     public InstrumentResolutionService(InstrumentRepository instrumentRepository,
-                                        InstrumentLookupClient instrumentLookupClient) {
+                                        InstrumentLookupClient instrumentLookupClient,
+                                        ApplicationEventPublisher eventPublisher) {
         this.instrumentRepository = instrumentRepository;
         this.instrumentLookupClient = instrumentLookupClient;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -86,7 +90,18 @@ public class InstrumentResolutionService {
     private Instrument createInstrument(String ticker, String name) {
         try {
             Instrument instrument = new Instrument(ticker, name, null);
-            return instrumentRepository.save(instrument);
+            instrument = instrumentRepository.save(instrument);
+
+            // Fetching the initial price happens in PriceService, listening
+            // for this event AFTER this transaction commits - see
+            // InstrumentCreatedEvent. That keeps instrument creation itself
+            // fast and independent of the price provider: if the fetch
+            // fails or is slow, the instrument still exists (price=0,
+            // priceUpdatedAt=null) and PriceRefreshScheduler's null-price
+            // sweep picks it up as a fallback on its next tick.
+            eventPublisher.publishEvent(new InstrumentCreatedEvent(instrument.getId()));
+
+            return instrument;
         } catch (DataIntegrityViolationException e) {
             // Another request resolved the same ticker concurrently (unique
             // constraint tripped) - fetch the winner instead of failing.

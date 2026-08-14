@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,11 +28,14 @@ class InstrumentResolutionServiceTest {
     @Mock
     private InstrumentLookupClient instrumentLookupClient;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private InstrumentResolutionService service;
 
     @BeforeEach
     void setUp() {
-        service = new InstrumentResolutionService(instrumentRepository, instrumentLookupClient);
+        service = new InstrumentResolutionService(instrumentRepository, instrumentLookupClient, eventPublisher);
     }
 
     // ---------- search() - read-only, never touches the database ----------
@@ -102,6 +107,22 @@ class InstrumentResolutionServiceTest {
     }
 
     @Test
+    void create_publishesInstrumentCreatedEvent_soPriceServiceCanFetchInitialPrice() {
+        when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.empty());
+        when(instrumentRepository.save(any(Instrument.class))).thenAnswer(invocation -> {
+            Instrument saved = invocation.getArgument(0);
+            // id is normally assigned by the DB (IDENTITY strategy) on
+            // save() - fake that here since we're mocking the repository.
+            ReflectionTestUtils.setField(saved, "id", 42L);
+            return saved;
+        });
+
+        service.create("AAPL", "APPLE INC");
+
+        verify(eventPublisher).publishEvent(new InstrumentCreatedEvent(42L));
+    }
+
+    @Test
     void create_returnsExistingInstrument_withoutCreatingDuplicate() {
         Instrument existing = new Instrument("AAPL", "APPLE INC", null);
         when(instrumentRepository.findByTicker("AAPL")).thenReturn(Optional.of(existing));
@@ -110,6 +131,7 @@ class InstrumentResolutionServiceTest {
 
         assertThat(instrument).isSameAs(existing);
         verify(instrumentRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
