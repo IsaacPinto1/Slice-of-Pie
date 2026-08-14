@@ -1,7 +1,9 @@
 package com.isaac.sliceofpie.prices;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +54,15 @@ public class PriceRefreshScheduler {
     @Scheduled(cron = "0 * * * * *")
     public void refreshDueInstruments() {
         int slot = currentSlot();
-        List<Long> dueInstrumentIds = instrumentRepository.findIdsByIdModulo(REFRESH_WINDOW_MINUTES, slot);
+        Set<Long> dueInstrumentIds = new LinkedHashSet<>(
+                instrumentRepository.findIdsByIdModulo(REFRESH_WINDOW_MINUTES, slot));
+
+        // A brand-new instrument (create() leaves price=0, priceUpdatedAt
+        // null) only lands in the slot rotation above once its id's
+        // assigned minute comes around - up to REFRESH_WINDOW_MINUTES (3h)
+        // later. Fold in every never-fetched instrument on every tick so it
+        // gets a real price within a minute of being created instead.
+        dueInstrumentIds.addAll(instrumentRepository.findIdsWithNullPriceUpdatedAt());
 
         for (Long instrumentId : dueInstrumentIds) {
             try {
