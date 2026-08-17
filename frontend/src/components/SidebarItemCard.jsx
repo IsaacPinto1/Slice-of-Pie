@@ -4,11 +4,10 @@
 // PositionItemResponse/WatchlistItemResponse so rendering a whole
 // sidebar of these never needs a per-item GET /price call.
 //
-// Deliberately minimal for now. Once cost basis is tracked on positions,
-// this is the one place a "price · % change" stat (or any other future
-// per-item stat) needs to be added for it to show up for every row -
-// swap/extend the price span below rather than touching the sections or
-// the detail views.
+// `percentChange` is only ever set on position items (PortfolioSidebar
+// derives it client-side from price vs. costBasis before this renders) -
+// watchlist items simply don't have it, so the badge only shows up for
+// held positions.
 export default function SidebarItemCard({ item, active, onSelect }) {
     return (
         <button
@@ -17,7 +16,14 @@ export default function SidebarItemCard({ item, active, onSelect }) {
             onClick={onSelect}
         >
             <span className="sidebar-item-ticker">{item.ticker}</span>
-            <span className="sidebar-item-price">{formatPrice(item.price)}</span>
+            <span className="sidebar-item-stats">
+                <span className="sidebar-item-price">{formatPrice(item.price)}</span>
+                {item.percentChange != null && (
+                    <span className={`sidebar-item-change ${item.percentChange >= 0 ? "positive" : "negative"}`}>
+                        {formatPercentChange(item.percentChange)}
+                    </span>
+                )}
+            </span>
         </button>
     );
 }
@@ -27,4 +33,9 @@ function formatPrice(price) {
     const num = Number(price);
     if (Number.isNaN(num)) return "—";
     return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatPercentChange(percentChange) {
+    const sign = percentChange >= 0 ? "+" : "";
+    return `${sign}${percentChange.toFixed(2)}%`;
 }

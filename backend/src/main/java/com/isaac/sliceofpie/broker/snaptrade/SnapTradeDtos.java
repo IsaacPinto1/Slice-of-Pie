@@ -30,7 +30,8 @@ public class SnapTradeDtos {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SnapTradePosition(
             SnapTradeInstrument instrument,
-            BigDecimal units
+            BigDecimal units,
+            BigDecimal cost_basis
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

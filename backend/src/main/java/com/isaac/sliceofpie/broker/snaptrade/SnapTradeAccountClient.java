@@ -10,6 +10,7 @@ import com.isaac.sliceofpie.broker.snaptrade.SnapTradeDtos.SnapTradePosition;
 import com.isaac.sliceofpie.broker.snaptrade.SnapTradeDtos.SnapTradePositionsResponse;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,14 +89,38 @@ public class SnapTradeAccountClient implements BrokerClient {
 
         String ticker = instrument.symbol();
         BigDecimal quantity = position.units();
+        // SnapTrade doesn't guarantee cost_basis on every position shape
+        // (e.g. it's routinely absent for cash-like or newly-opened
+        // positions) - default to zero rather than let a null ripple into
+        // the merge math below or the non-nullable Position column.
+        BigDecimal costBasis = position.cost_basis() != null ? position.cost_basis() : BigDecimal.ZERO;
         String name = instrument.description();
 
         holdingsByTicker.merge(
-                ticker,
-                new BrokerHolding(ticker, name, quantity),
-                (existing, incoming) -> new BrokerHolding(
-                        ticker,
-                        existing.name() != null ? existing.name() : incoming.name(),
-                        existing.quantity().add(incoming.quantity())));
+            ticker,
+            new BrokerHolding(ticker, name, quantity, costBasis),
+            (existing, incoming) -> new BrokerHolding(
+                    ticker,
+                    existing.name() != null ? existing.name() : incoming.name(),
+                    existing.quantity().add(incoming.quantity()),
+                    calculateCostBasis(
+                        existing.costBasis(),
+                        existing.quantity(),
+                        incoming.costBasis(),
+                        incoming.quantity())
+                    )
+        );
+    }
+
+    private BigDecimal calculateCostBasis(BigDecimal p1, BigDecimal q1, BigDecimal p2, BigDecimal q2) {
+        BigDecimal totalQuantity = q1.add(q2);
+
+        if (totalQuantity.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return p1.multiply(q1)
+                .add(p2.multiply(q2))
+                .divide(totalQuantity, 8, RoundingMode.HALF_UP);
     }
 }
