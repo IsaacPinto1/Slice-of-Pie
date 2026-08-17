@@ -105,8 +105,9 @@ public class PositionService {
                 positionRepository.findByUserIdAndInstrumentId(userId, instrument.getId());
         if (existing.isPresent()) {
             existing.get().setQuantity(holding.quantity());
+            existing.get().setCostBasis(holding.costBasis());
         } else {
-            positionRepository.save(new Position(userId, instrument, holding.quantity()));
+            positionRepository.save(new Position(userId, instrument, holding.quantity(), holding.costBasis()));
         }
         return instrument.getId();
     }

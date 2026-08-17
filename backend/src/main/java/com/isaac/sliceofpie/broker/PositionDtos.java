@@ -21,7 +21,8 @@ public class PositionDtos {
             // provider - see WatchlistDtos.WatchlistItemResponse.price for
             // the full reasoning (kept once there since both DTOs pull it
             // the same way).
-            BigDecimal price
+            BigDecimal price,
+            BigDecimal costbasis
     ) {
         public static PositionItemResponse from(Position position) {
             Instrument instrument = position.getInstrument();
@@ -30,7 +31,8 @@ public class PositionDtos {
                     instrument.getTicker(),
                     instrument.getName(),
                     position.getQuantity(),
-                    BigDecimal.valueOf(instrument.getPrice())
+                    BigDecimal.valueOf(instrument.getPrice()),
+                    position.getCostBasis()
             );
         }
     }
@@ -41,5 +43,5 @@ public class PositionDtos {
     // holdings/positions response into, before PositionService ever sees a
     // provider-specific shape. Same "mapping happens at the edge" pattern
     // as InstrumentDtos.InstrumentSearchResult / PriceDtos.PriceResponse.
-    public record BrokerHolding(String ticker, String name, BigDecimal quantity) {}
+    public record BrokerHolding(String ticker, String name, BigDecimal quantity, BigDecimal costBasis) {}
 }

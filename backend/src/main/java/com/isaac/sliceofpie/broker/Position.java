@@ -31,19 +31,25 @@ public class Position {
     @Column(nullable = false)
     private BigDecimal quantity;
 
+    @Column(nullable = false)
+    private BigDecimal costBasis;
+
     protected Position() {
         // required by JPA
     }
 
-    public Position(Long userId, Instrument instrument, BigDecimal quantity) {
+    public Position(Long userId, Instrument instrument, BigDecimal quantity, BigDecimal costBasis) {
         this.userId = userId;
         this.instrument = instrument;
         this.quantity = quantity;
+        this.costBasis = costBasis;
     }
 
     public Long getId() { return id; }
     public Long getUserId() { return userId; }
     public Instrument getInstrument() { return instrument; }
     public BigDecimal getQuantity() { return quantity; }
+    public BigDecimal getCostBasis() {return costBasis;}
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
+    public void setCostBasis(BigDecimal costBasis) { this.costBasis = costBasis; }
 }

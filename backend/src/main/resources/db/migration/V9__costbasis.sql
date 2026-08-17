@@ -1,0 +1,1 @@
+ALTER TABLE position ADD COLUMN cost_basis DOUBLE PRECISION;
