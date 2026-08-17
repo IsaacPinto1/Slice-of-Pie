@@ -1,6 +1,7 @@
 package com.isaac.sliceofpie.broker;
 
 import com.isaac.sliceofpie.auth.AuthDtos.UserPrincipal;
+import com.isaac.sliceofpie.broker.PositionDtos.BrokerAllowedResponse;
 import com.isaac.sliceofpie.broker.PositionDtos.BrokerStatusResponse;
 import com.isaac.sliceofpie.broker.PositionDtos.PositionItemResponse;
 import com.isaac.sliceofpie.broker.PositionDtos.PositionResponse;
@@ -30,6 +31,14 @@ public class PositionController {
     public PositionController(PositionService positionService, BrokerAccessGuard brokerAccessGuard) {
         this.positionService = positionService;
         this.brokerAccessGuard = brokerAccessGuard;
+    }
+
+    // Quick and cheap check to see if the user is authenticated for broker access via 
+    // allowed usernames list. Designed to be run on page load along (like /me)
+    @GetMapping("/broker/allowed")
+    public BrokerAllowedResponse allowed(Authentication authentication) {
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        return new BrokerAllowedResponse(brokerAccessGuard.isAllowed(principal.username()));
     }
 
     @GetMapping("/broker/status")

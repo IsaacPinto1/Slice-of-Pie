@@ -20,6 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import com.isaac.sliceofpie.auth.AuthTestUtils;
+import com.isaac.sliceofpie.broker.PositionDtos.BrokerAllowedResponse;
 import com.isaac.sliceofpie.broker.PositionDtos.BrokerHolding;
 import com.isaac.sliceofpie.broker.PositionDtos.BrokerStatusResponse;
 import com.isaac.sliceofpie.broker.PositionDtos.PositionResponse;
@@ -80,9 +81,44 @@ class PositionFlowTest {
 
     @Test
     void broker_routes_requireAuthentication() {
+        client.get().uri("/broker/allowed").exchange().expectStatus().isUnauthorized();
         client.get().uri("/broker/status").exchange().expectStatus().isUnauthorized();
         client.get().uri("/positions").exchange().expectStatus().isUnauthorized();
         client.post().uri("/positions/sync").exchange().expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void allowed_reportsTrue_forAllowedUser() {
+        BrokerAllowedResponse body = client.get()
+                .uri("/broker/allowed")
+                .header("Authorization", "Bearer " + allowedToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(BrokerAllowedResponse.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertNotNull(body);
+        assertEquals(true, body.allowed());
+    }
+
+    @Test
+    void allowed_reportsFalse_ratherThan404_forNonAllowedUser() {
+        // The one broker route that's deliberately NOT hidden behind a
+        // 404 - see PositionDtos.BrokerAllowedResponse.
+        String token = AuthTestUtils.registerAndLogin(client, AuthTestUtils.uniqueUsername(), "1234");
+
+        BrokerAllowedResponse body = client.get()
+                .uri("/broker/allowed")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(BrokerAllowedResponse.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertNotNull(body);
+        assertEquals(false, body.allowed());
     }
 
     @Test

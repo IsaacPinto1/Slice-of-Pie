@@ -5,7 +5,7 @@ import TickerSearch from "../components/TickerSearch";
 import { addTicker, getWatchlist, removeTicker } from "../api/watchlist";
 import { createInstrument } from "../api/instruments";
 import { getMe } from "../api/user";
-import { getBrokerStatus } from "../api/broker";
+import { getBrokerAllowed, getBrokerStatus } from "../api/broker";
 import { getPositions, syncPositions } from "../api/positions";
 import BrandMark from "../components/BrandMark";
 
@@ -15,14 +15,16 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    // Broker/positions state. brokerAllowed stays false until a real 200
-    // comes back from GET /broker/status, only allowing the allowed users 
+    // Stored from GET /broker/allowed, which checks username
     const [brokerAllowed, setBrokerAllowed] = useState(false);
     const [connected, setConnected] = useState(false);
     const [positions, setPositions] = useState([]);
-    // positionsLoading: true only while there's genuinely nothing to show
-    // yet (the very first DB read on mount)
+    // positionsLoading: Initially true, only false once there is data to show
     const [positionsLoading, setPositionsLoading] = useState(false);
+    // positionsError: the connected check or the initial sync that
+    // follows a successful allow-check genuinely failed. Only set by
+    // the useEffect syncs, not background syncs
+    const [positionsError, setPositionsError] = useState(false);
     // positionsSyncing: a live reconciliation against the broker is in
     // flight (either the automatic background one on load, or the manual
     // "Sync positions" button). Drives small indicator only
@@ -51,22 +53,6 @@ export default function Dashboard() {
     const [positionsCollapsed, setPositionsCollapsed] = useState(false);
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
 
-    // Cheap DB read - never touches the live broker, so this is always
-    // fast. Used to hydrate the Positions section immediately on load
-    // (the "worst case" fallback the background sync doesn't need to
-    // wait on).
-    const loadStoredPositions = async () => {
-        setPositionsLoading(true);
-        try {
-            const res = await getPositions();
-            setPositions(res.data.items);
-        } catch {
-            setPositions([]);
-        } finally {
-            setPositionsLoading(false);
-        }
-    };
-
     // Reconcile live provider without touching what's on screen. Failures
     // here are swallowed since the display is already a good fallback, and
     // the user shouldn't have to react to a background refresh
@@ -89,42 +75,70 @@ export default function Dashboard() {
         const load = async () => {
             setLoading(true);
             setError("");
+
+            // Cheap DB so can be fired off immediately. Allows the last
+            // stored positions to be displayed immediately, and swallows any errors
+            // (like for non-allowed 404s)
+            const positionsPromise = getPositions().catch(() => null);
+
+            let allowed = false;
             try {
-                const [meRes, watchlistRes] = await Promise.all([
+                const [meRes, watchlistRes, allowedRes] = await Promise.all([
                     getMe(),
                     getWatchlist(),
+                    getBrokerAllowed(),
                 ]);
                 if (cancelled) return;
                 setUsername(meRes.data.username);
                 setWatchlist(watchlistRes.data.items);
+                allowed = allowedRes.data.allowed;
+                setBrokerAllowed(allowed);
             } catch {
                 if (!cancelled) setError("Couldn't load your dashboard. Try refreshing.");
             } finally {
                 if (!cancelled) setLoading(false);
             }
 
-            // Broker/positions is a separate, best-effort load, deliberately
-            // isolated from the try/catch above: a failure here - including
-            // the 404 a non-allowed user gets - must never surface as a
-            // dashboard error, block the watchlist from loading, or leave
-            // any visible trace that this feature exists.
+            if (!allowed || cancelled) return;
+            const positionsRes = await positionsPromise; // Only trust await after allow check passes
+            const stored = (allowed && positionsRes) ? positionsRes.data.items : [];
+            setPositions(stored);
+
+            // Broker/positions is a separate, best-effort load that only
+            // starts once the allow-check above already came back true -
             try {
                 const statusRes = await getBrokerStatus();
                 if (cancelled) return;
-                setBrokerAllowed(true);
                 setConnected(statusRes.data.connected);
 
                 if (statusRes.data.connected) {
-                    // Show whatever's already stored immediately - a fast
-                    // DB read, never blocked on SnapTrade - then
-                    // reconcile with the provider quietly afterward. The
-                    // list is never blanked in favor of a spinner here.
-                    await loadStoredPositions();
-                    if (cancelled) return;
-                    syncPositionsInBackground();
+                    // `stored` is the "last known state" fetched above,
+                    // already on screen by now. On subsequent loads that represents
+                    // a real past state of positions, but on the initial load
+                    // there'll be nothing and it'll be hidden under a full spinner
+                    if (stored.length === 0) {
+                        // True initial load: nothing to show yet, so keep
+                        // the whole section spinning until the first real
+                        // sync completes, and surface a genuine failure here
+                        setPositionsLoading(true);
+                        try {
+                            const syncRes = await syncPositions();
+                            if (cancelled) return;
+                            setPositions(syncRes.data.items);
+                            setPositionsError(false);
+                        } catch {
+                            if (!cancelled) setPositionsError(true);
+                        } finally {
+                            if (!cancelled) setPositionsLoading(false);
+                        }
+                    } else {
+                        // Refresh/subsequent login: last known state is
+                        // already on screen, so just reconcile quietly 
+                        syncPositionsInBackground();
+                    }
                 }
             } catch {
-                if (!cancelled) setBrokerAllowed(false);
+                if (!cancelled) setPositionsError(true);
             }
         };
 
@@ -207,9 +221,9 @@ export default function Dashboard() {
                                     <button
                                         className="secondary small"
                                         onClick={handleSyncPositions}
-                                        disabled={positionsSyncing}
+                                        disabled={positionsSyncing || positionsLoading}
                                     >
-                                        {positionsSyncing ? "Syncing..." : "Sync positions"}
+                                        {(positionsSyncing || positionsLoading) ? "Syncing..." : "Sync positions"}
                                     </button>
                                 </div>
                             )}
@@ -225,9 +239,9 @@ export default function Dashboard() {
                         <div className="dashboard-layout">
                             <PortfolioSidebar
                                 brokerAllowed={brokerAllowed}
-                                connected={connected}
                                 positions={positions}
                                 positionsLoading={positionsLoading}
+                                positionsError={positionsError}
                                 positionsSyncing={positionsSyncing}
                                 watchlist={watchlist}
                                 selected={selected}

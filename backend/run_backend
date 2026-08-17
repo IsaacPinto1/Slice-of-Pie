@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#
+# Run the backend locally against the dev Postgres container.
+#
+# Usage (from the backend/ folder):
+#   ./run_backend
+#
+# What it does:
+#   1. Tears down any existing docker-compose containers (dev or test) so
+#      there's no port 5432 conflict.
+#   2. Starts the dev Postgres container (docker-compose.yml).
+#   3. Runs `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` in the
+#      foreground - Ctrl+C stops the server; the dev container is left
+#      running afterward so it doesn't need to be recreated next time.
+
+set -uo pipefail
+
+# Resolve paths relative to this script's location, so it works regardless
+# of the directory it's invoked from.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+COMPOSE_DEV="$REPO_ROOT/docker-compose.yml"
+COMPOSE_TEST="$REPO_ROOT/docker-compose.test.yml"
+
+echo "==> Stopping any existing containers (dev/test) to free port 5432..."
+docker compose -f "$COMPOSE_DEV" down -v 2>/dev/null || true
+docker compose -f "$COMPOSE_TEST" down -v 2>/dev/null || true
+
+echo "==> Starting dev database..."
+docker compose -f "$COMPOSE_DEV" up -d
+
+echo "==> Waiting for Postgres to be ready..."
+until docker compose -f "$COMPOSE_DEV" exec -T db pg_isready -U dev_user -d sliceofpie >/dev/null 2>&1; do
+    sleep 1
+done
+
+echo "==> Starting backend (dev profile)..."
+cd "$SCRIPT_DIR"
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev

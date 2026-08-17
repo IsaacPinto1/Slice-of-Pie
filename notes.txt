@@ -28,6 +28,8 @@ Backend:
 
     Each @Entity should have its own respository, and everything else shouldn't use it unless it has to.
 
+    Methods shouldn't be hidden from users, but should be secure via authentication/security protocols
+
 Testing:
 
     Implementation specific tests should exist *alongside* the implementation agnostic tests. E.g there should be one test
@@ -40,3 +42,10 @@ Testing:
 
     Controller tests need to use MockMvc so that the ExceptionHandler is triggered. If not, you'll see the exceptions being
     thrown, but not that they're being caught and turned into the problem details with the specific statuses you chose.
+
+Deployment/Profiles:
+    application.yml is base config, other profiles add onto it
+
+    Profile switches happen through SPRING_PROFILES_ACTIVE env var, hard coded in backend/Dockerfile to be prod
+
+    Will only run in dev mode if it's specifically flagged, otherwise the image (for prod) is the prod profile
