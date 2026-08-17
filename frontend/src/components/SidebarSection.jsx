@@ -2,7 +2,12 @@
 // "Watchlist" groups in the sidebar. Kept content-agnostic (title/count
 // in, children out) rather than positions/watchlist-specific, same
 // reasoning as the old ViewToggle being value/onChange generic.
-export default function SidebarSection({ title, count, total, collapsed, onToggleCollapse, children }) {
+//
+// `syncing` is separate from whatever's happening in `children` - it's a
+// small indicator next to the title (a background reconciliation is in
+// flight) that never affects what's rendered below it, so the list this
+// section holds is never blanked out while a sync runs.
+export default function SidebarSection({ title, count, total, syncing, collapsed, onToggleCollapse, children }) {
     return (
         <div className="sidebar-section">
             <button
@@ -25,6 +30,9 @@ export default function SidebarSection({ title, count, total, collapsed, onToggl
                     <polyline points="6 9 12 15 18 9" />
                 </svg>
                 <span className="sidebar-section-title">{title}</span>
+                {syncing && (
+                    <span className="spinner sidebar-section-spinner" aria-label="Syncing" title="Syncing" />
+                )}
                 {total != null && (
                     <span className="sidebar-section-total">{total}</span>
                 )}

@@ -59,6 +59,7 @@ export default function PortfolioSidebar({
     connected,
     positions,
     positionsLoading,
+    positionsSyncing,
     watchlist,
     selected,
     onSelect,
@@ -77,6 +78,7 @@ export default function PortfolioSidebar({
                     title="Positions"
                     count={positions.length}
                     total={positions.length > 0 && !positionsLoading ? positionsValue : null}
+                    syncing={positionsSyncing}
                     collapsed={positionsCollapsed}
                     onToggleCollapse={onTogglePositions}
                 >

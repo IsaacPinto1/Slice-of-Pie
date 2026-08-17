@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PortfolioSidebar from "../components/PortfolioSidebar";
 import DetailPanel from "../components/DetailPanel";
 import TickerSearch from "../components/TickerSearch";
@@ -26,8 +26,38 @@ export default function Dashboard() {
     const [brokerAllowed, setBrokerAllowed] = useState(false);
     const [connected, setConnected] = useState(false);
     const [positions, setPositions] = useState([]);
+    // positionsLoading: true only while there's genuinely nothing to show
+    // yet (the very first DB read on mount) - this is what lets
+    // PortfolioSidebar fall back to its spinner-only state instead of
+    // rendering an empty list.
     const [positionsLoading, setPositionsLoading] = useState(false);
-    const [syncing, setSyncing] = useState(false);
+    // positionsSyncing: a live reconciliation against the broker is in
+    // flight (either the automatic background one on load, or the manual
+    // "Sync positions" button). Deliberately separate from
+    // positionsLoading - whatever's already on screen (freshly read from
+    // the DB, or left over from the previous sync) stays exactly as-is
+    // the whole time; this only drives a small indicator, never a
+    // full-list spinner.
+    const [positionsSyncing, setPositionsSyncing] = useState(false);
+
+    // Guards state updates from in-flight requests (the background sync
+    // in particular) that resolve after the component's gone - same
+    // "cancelled" idea the load effect below uses locally, but shared
+    // since syncPositionsInBackground can outlive that effect.
+    //
+    // The setup body must explicitly set this true, not just rely on
+    // useRef(true)'s initial value: StrictMode double-invokes every
+    // effect on mount (mount -> cleanup -> mount again) to catch exactly
+    // this kind of bug, and that simulated cleanup flips the ref false.
+    // Without resetting it here, the ref would stay false for the rest
+    // of the component's real life, silently dropping every future
+    // "if (mountedRef.current) setState(...)" - which is exactly what
+    // made positionsSyncing get stuck true forever.
+    const mountedRef = useRef(true);
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
 
     // Which sidebar row is open in the detail panel. Deliberately just a
     // {type, instrumentId} pointer rather than a copy of the row itself -
@@ -39,26 +69,40 @@ export default function Dashboard() {
     const [positionsCollapsed, setPositionsCollapsed] = useState(false);
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
 
-    // sync: true runs a fresh sync against the provider first (used on
-    // initial load and the manual "Sync" button); sync: false just re-reads
-    // whatever's already stored (used as a fallback if a sync attempt
-    // itself fails, so a provider hiccup doesn't wipe the section).
-    const loadPositions = async ({ sync }) => {
+    // Cheap DB read - never touches the live broker, so this is always
+    // fast. Used to hydrate the Positions section immediately on load
+    // (the "worst case" fallback the background sync doesn't need to
+    // wait on).
+    const loadStoredPositions = async () => {
         setPositionsLoading(true);
         try {
-            const res = sync ? await syncPositions() : await getPositions();
+            const res = await getPositions();
             setPositions(res.data.items);
         } catch {
-            if (sync) {
-                try {
-                    const res = await getPositions();
-                    setPositions(res.data.items);
-                } catch {
-                    setPositions([]);
-                }
-            }
+            setPositions([]);
         } finally {
             setPositionsLoading(false);
+        }
+    };
+
+    // Reconciles with the live provider. Deliberately never touches
+    // positionsLoading - whatever's already rendered stays on screen for
+    // the whole call; positionsSyncing only drives a small indicator in
+    // the section header (see PortfolioSidebar), not a full-list
+    // spinner. A failure here is swallowed rather than surfaced or
+    // re-fetched: the DB snapshot already showing is a perfectly good
+    // fallback, and a background reconciliation erroring out isn't
+    // something the user needs to react to.
+    const syncPositionsInBackground = async () => {
+        if (positionsSyncing) return;
+        setPositionsSyncing(true);
+        try {
+            const res = await syncPositions();
+            if (mountedRef.current) setPositions(res.data.items);
+        } catch {
+            // keep whatever's already shown
+        } finally {
+            if (mountedRef.current) setPositionsSyncing(false);
         }
     };
 
@@ -94,7 +138,13 @@ export default function Dashboard() {
                 setConnected(statusRes.data.connected);
 
                 if (statusRes.data.connected) {
-                    await loadPositions({ sync: true });
+                    // Show whatever's already stored immediately - a fast
+                    // DB read, never blocked on SnapTrade - then
+                    // reconcile with the provider quietly afterward. The
+                    // list is never blanked in favor of a spinner here.
+                    await loadStoredPositions();
+                    if (cancelled) return;
+                    syncPositionsInBackground();
                 }
             } catch {
                 if (!cancelled) setBrokerAllowed(false);
@@ -105,14 +155,8 @@ export default function Dashboard() {
         return () => { cancelled = true; };
     }, []);
 
-    const handleSyncPositions = async () => {
-        if (syncing) return;
-        setSyncing(true);
-        try {
-            await loadPositions({ sync: true });
-        } finally {
-            setSyncing(false);
-        }
+    const handleSyncPositions = () => {
+        syncPositionsInBackground();
     };
 
     const reloadWatchlist = async () => {
@@ -186,9 +230,9 @@ export default function Dashboard() {
                                     <button
                                         className="secondary small"
                                         onClick={handleSyncPositions}
-                                        disabled={syncing}
+                                        disabled={positionsSyncing}
                                     >
-                                        {syncing ? "Syncing..." : "Sync positions"}
+                                        {positionsSyncing ? "Syncing..." : "Sync positions"}
                                     </button>
                                 </div>
                             )}
@@ -207,6 +251,7 @@ export default function Dashboard() {
                                 connected={connected}
                                 positions={positions}
                                 positionsLoading={positionsLoading}
+                                positionsSyncing={positionsSyncing}
                                 watchlist={watchlist}
                                 selected={selected}
                                 onSelect={setSelected}
