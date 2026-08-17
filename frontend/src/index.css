@@ -776,6 +776,13 @@ button.small {
   text-align: left;
 }
 
+.sidebar-section-spinner {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+  flex-shrink: 0;
+}
+
 .sidebar-section-total {
   font-size: 12px;
   font-weight: 700;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PortfolioSidebar from "../components/PortfolioSidebar";
 import DetailPanel from "../components/DetailPanel";
 import TickerSearch from "../components/TickerSearch";
@@ -16,18 +16,30 @@ export default function Dashboard() {
     const [error, setError] = useState("");
 
     // Broker/positions state. brokerAllowed stays false until a real 200
-    // comes back from GET /broker/status - a non-allowed user's request
-    // fails (deliberately indistinguishable from a 404 on a route that
-    // doesn't exist - see BrokerAccessGuard), so the safe default is
-    // "assume not allowed" and only turn the feature on once it's actually
-    // confirmed. That's what keeps the whole Positions sidebar section -
-    // and everything in it - showing zero evidence positions exist for
-    // anyone not on the allowlist.
+    // comes back from GET /broker/status, only allowing the allowed users 
     const [brokerAllowed, setBrokerAllowed] = useState(false);
     const [connected, setConnected] = useState(false);
     const [positions, setPositions] = useState([]);
+    // positionsLoading: true only while there's genuinely nothing to show
+    // yet (the very first DB read on mount)
     const [positionsLoading, setPositionsLoading] = useState(false);
-    const [syncing, setSyncing] = useState(false);
+    // positionsSyncing: a live reconciliation against the broker is in
+    // flight (either the automatic background one on load, or the manual
+    // "Sync positions" button). Drives small indicator only
+    const [positionsSyncing, setPositionsSyncing] = useState(false);
+
+    // Guards state updates from in-flight requests (the background sync
+    // in particular) that resolve after the component's gone - same
+    // "cancelled" idea the load effect below uses locally, but shared
+    // since syncPositionsInBackground can outlive that effect. This is
+    // important for strict mode where everything is mounted/unmounted twice
+    //
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
 
     // Which sidebar row is open in the detail panel. Deliberately just a
     // {type, instrumentId} pointer rather than a copy of the row itself -
@@ -39,26 +51,35 @@ export default function Dashboard() {
     const [positionsCollapsed, setPositionsCollapsed] = useState(false);
     const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
 
-    // sync: true runs a fresh sync against the provider first (used on
-    // initial load and the manual "Sync" button); sync: false just re-reads
-    // whatever's already stored (used as a fallback if a sync attempt
-    // itself fails, so a provider hiccup doesn't wipe the section).
-    const loadPositions = async ({ sync }) => {
+    // Cheap DB read - never touches the live broker, so this is always
+    // fast. Used to hydrate the Positions section immediately on load
+    // (the "worst case" fallback the background sync doesn't need to
+    // wait on).
+    const loadStoredPositions = async () => {
         setPositionsLoading(true);
         try {
-            const res = sync ? await syncPositions() : await getPositions();
+            const res = await getPositions();
             setPositions(res.data.items);
         } catch {
-            if (sync) {
-                try {
-                    const res = await getPositions();
-                    setPositions(res.data.items);
-                } catch {
-                    setPositions([]);
-                }
-            }
+            setPositions([]);
         } finally {
             setPositionsLoading(false);
+        }
+    };
+
+    // Reconcile live provider without touching what's on screen. Failures
+    // here are swallowed since the display is already a good fallback, and
+    // the user shouldn't have to react to a background refresh
+    const syncPositionsInBackground = async () => {
+        if (positionsSyncing) return;
+        setPositionsSyncing(true);
+        try {
+            const res = await syncPositions();
+            if (mountedRef.current) setPositions(res.data.items);
+        } catch {
+            // keep whatever's already shown
+        } finally {
+            if (mountedRef.current) setPositionsSyncing(false);
         }
     };
 
@@ -94,7 +115,13 @@ export default function Dashboard() {
                 setConnected(statusRes.data.connected);
 
                 if (statusRes.data.connected) {
-                    await loadPositions({ sync: true });
+                    // Show whatever's already stored immediately - a fast
+                    // DB read, never blocked on SnapTrade - then
+                    // reconcile with the provider quietly afterward. The
+                    // list is never blanked in favor of a spinner here.
+                    await loadStoredPositions();
+                    if (cancelled) return;
+                    syncPositionsInBackground();
                 }
             } catch {
                 if (!cancelled) setBrokerAllowed(false);
@@ -105,14 +132,8 @@ export default function Dashboard() {
         return () => { cancelled = true; };
     }, []);
 
-    const handleSyncPositions = async () => {
-        if (syncing) return;
-        setSyncing(true);
-        try {
-            await loadPositions({ sync: true });
-        } finally {
-            setSyncing(false);
-        }
+    const handleSyncPositions = () => {
+        syncPositionsInBackground();
     };
 
     const reloadWatchlist = async () => {
@@ -186,9 +207,9 @@ export default function Dashboard() {
                                     <button
                                         className="secondary small"
                                         onClick={handleSyncPositions}
-                                        disabled={syncing}
+                                        disabled={positionsSyncing}
                                     >
-                                        {syncing ? "Syncing..." : "Sync positions"}
+                                        {positionsSyncing ? "Syncing..." : "Sync positions"}
                                     </button>
                                 </div>
                             )}
@@ -207,6 +228,7 @@ export default function Dashboard() {
                                 connected={connected}
                                 positions={positions}
                                 positionsLoading={positionsLoading}
+                                positionsSyncing={positionsSyncing}
                                 watchlist={watchlist}
                                 selected={selected}
                                 onSelect={setSelected}
