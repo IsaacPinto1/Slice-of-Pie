@@ -1,8 +1,6 @@
 History via alpaca: https://docs.alpaca.markets/us/reference/stockbars
 
-Sync should really only happen on login, and then you can click or something. Shouldn't run every refresh
-
-Prices go stale if backend server is down (scheduler doesn't run)
+Prices go stale if backend server is down (scheduler doesn't run) - 
 
 Thesis statements should be tagged to a price point
 
@@ -10,7 +8,6 @@ Thesis statements should be tagged to a price point
 - Load animation is slow now when adding to watchlist
 
 UI Changes:
-    - Load when verified user is detected is janky
     - Focus on window focus (prevent stale state)
     - stocks already in watchlist should be marked as followed somehow in the search
     - Handle delete behaviour better when main UI changes
