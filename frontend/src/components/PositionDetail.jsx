@@ -16,7 +16,7 @@ const FORCE_REFRESH_COOLDOWN_MS = 5000;
 // result overrides the list price locally until the next sync or a
 // different position is selected.
 export default function PositionDetail({ item }) {
-    const { instrumentId, ticker, name, quantity } = item;
+    const { instrumentId, ticker, name, quantity, costBasis } = item;
     const [thesis, setThesis] = useState("");
     const [loadingThesis, setLoadingThesis] = useState(true);
     const [forcedPrice, setForcedPrice] = useState(null);
@@ -64,6 +64,13 @@ export default function PositionDetail({ item }) {
 
     const price = forcedPrice ?? item.price;
     const marketValue = price != null ? Number(quantity) * Number(price) : null;
+    // Same "0 cost basis reads as unknown, not -100%" rule as
+    // PortfolioSidebar's percentChange - a position that predates cost
+    // basis tracking and hasn't been re-synced yet shouldn't show a
+    // misleading number here either.
+    const costBasisNum = Number(costBasis);
+    const hasCostBasis = price != null && Number.isFinite(costBasisNum) && costBasisNum !== 0;
+    const percentChange = hasCostBasis ? ((Number(price) - costBasisNum) / costBasisNum) * 100 : null;
 
     return (
         <div className="detail-card">
@@ -90,6 +97,22 @@ export default function PositionDetail({ item }) {
                     <span className="position-metric-label">Value</span>
                     <span className="position-metric-value position-metric-value-accent">
                         {marketValue != null ? `$${marketValue.toFixed(2)}` : "—"}
+                    </span>
+                </div>
+                <div className="position-metric">
+                    <span className="position-metric-label">Cost basis</span>
+                    <span className="position-metric-value">
+                        {hasCostBasis ? `$${costBasisNum.toFixed(2)}` : "—"}
+                    </span>
+                </div>
+                <div className="position-metric">
+                    <span className="position-metric-label">Change</span>
+                    <span
+                        className={`position-metric-value${
+                            percentChange != null ? (percentChange >= 0 ? " position-metric-positive" : " position-metric-negative") : ""
+                        }`}
+                    >
+                        {percentChange != null ? `${percentChange >= 0 ? "+" : ""}${percentChange.toFixed(2)}%` : "—"}
                     </span>
                 </div>
             </div>

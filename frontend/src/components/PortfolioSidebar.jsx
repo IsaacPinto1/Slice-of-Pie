@@ -18,6 +18,37 @@ function usePositionsValue(positions) {
     }, [positions]);
 }
 
+// Percentage change between the live price and cost basis, both of which
+// PositionItemResponse already carries - no extra endpoint needed. A
+// costBasis of exactly 0 (a position that predates cost-basis tracking
+// and hasn't been re-synced yet) can't support a meaningful percentage,
+// so it's treated the same as a missing value rather than reported as a
+// misleading +Infinity/undefined-driven number.
+function percentChange(item) {
+    const price = Number(item.price);
+    const costBasis = Number(item.costBasis);
+    if (!Number.isFinite(price) || !Number.isFinite(costBasis) || costBasis === 0) return null;
+    return ((price - costBasis) / costBasis) * 100;
+}
+
+// Positions ranked by percentChange, best performers first. Positions
+// without a usable percentage (see percentChange above) sort to the
+// bottom rather than being dropped, so a stale/never-synced cost basis
+// doesn't hide the position itself.
+function usePositionsRankedByChange(positions) {
+    return useMemo(() => {
+        return positions
+            .map((item) => ({ item, change: percentChange(item) }))
+            .sort((a, b) => {
+                if (a.change == null && b.change == null) return 0;
+                if (a.change == null) return 1;
+                if (b.change == null) return -1;
+                return b.change - a.change;
+            })
+            .map(({ item, change }) => ({ ...item, percentChange: change }));
+    }, [positions]);
+}
+
 // Sidebar for the sidebar + focused-item layout: a collapsible
 // "Positions" section stacked on top of a collapsible "Watchlist"
 // section, each holding small ticker+price cards. Selecting a card just
@@ -37,6 +68,7 @@ export default function PortfolioSidebar({
     onToggleWatchlist,
 }) {
     const positionsValue = usePositionsValue(positions);
+    const rankedPositions = usePositionsRankedByChange(positions);
 
     return (
         <nav className="sidebar" aria-label="Positions and watchlist">
@@ -55,7 +87,7 @@ export default function PortfolioSidebar({
                     ) : positions.length === 0 ? (
                         <p className="sidebar-empty">No positions synced yet.</p>
                     ) : (
-                        positions.map((item) => (
+                        rankedPositions.map((item) => (
                             <SidebarItemCard
                                 key={item.instrumentId}
                                 item={item}

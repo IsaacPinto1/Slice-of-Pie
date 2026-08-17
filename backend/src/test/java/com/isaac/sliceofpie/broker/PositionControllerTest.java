@@ -1,8 +1,10 @@
 package com.isaac.sliceofpie.broker;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,6 +20,7 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
@@ -117,13 +120,14 @@ class PositionControllerTest {
     @Test
     void getPositions_returns200_withStoredPositions() throws Exception {
         Instrument aapl = new Instrument("AAPL", "Apple Inc", null);
-        Position position = new Position(USER_ID, aapl, new BigDecimal("5"));
+        Position position = new Position(USER_ID, aapl, new BigDecimal("5"), new BigDecimal("150.25"));
         when(positionRepository.findAllByUserIdFetchInstrument(USER_ID)).thenReturn(List.of(position));
 
         mockMvc.perform(get("/positions").principal(allowedUser()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].ticker").value("AAPL"))
-                .andExpect(jsonPath("$.items[0].quantity").value(5));
+                .andExpect(jsonPath("$.items[0].quantity").value(5))
+                .andExpect(jsonPath("$.items[0].costBasis").value(150.25));
     }
 
     @Test
@@ -139,16 +143,57 @@ class PositionControllerTest {
         Instrument aapl = new Instrument("AAPL", "Apple Inc", null);
         when(brokerClient.hasConnectedAccounts()).thenReturn(true);
         when(brokerClient.fetchHoldings())
-                .thenReturn(List.of(new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("5"))));
+                .thenReturn(List.of(new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("5"), new BigDecimal("150.25"))));
         when(instrumentResolutionService.resolve("AAPL")).thenReturn(aapl);
         when(positionRepository.findByUserIdAndInstrumentId(eq(USER_ID), any())).thenReturn(Optional.empty());
         when(positionRepository.findAllByUserIdFetchInstrument(USER_ID))
-                .thenReturn(List.of(new Position(USER_ID, aapl, new BigDecimal("5"))));
+                .thenReturn(List.of(new Position(USER_ID, aapl, new BigDecimal("5"), new BigDecimal("150.25"))));
 
         mockMvc.perform(post("/positions/sync").principal(allowedUser()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].ticker").value("AAPL"))
-                .andExpect(jsonPath("$.items[0].quantity").value(5));
+                .andExpect(jsonPath("$.items[0].quantity").value(5))
+                .andExpect(jsonPath("$.items[0].costBasis").value(150.25));
+    }
+
+    @Test
+    void sync_savesNewPosition_withCostBasisFromHolding() throws Exception {
+        // upsert()'s "not present yet" branch - the new Position it saves
+        // must carry the holding's cost basis, not just quantity.
+        Instrument aapl = new Instrument("AAPL", "Apple Inc", null);
+        when(brokerClient.hasConnectedAccounts()).thenReturn(true);
+        when(brokerClient.fetchHoldings())
+                .thenReturn(List.of(new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("5"), new BigDecimal("150.25"))));
+        when(instrumentResolutionService.resolve("AAPL")).thenReturn(aapl);
+        when(positionRepository.findByUserIdAndInstrumentId(eq(USER_ID), any())).thenReturn(Optional.empty());
+        when(positionRepository.findAllByUserIdFetchInstrument(USER_ID)).thenReturn(List.of());
+
+        mockMvc.perform(post("/positions/sync").principal(allowedUser()))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Position> saved = ArgumentCaptor.forClass(Position.class);
+        verify(positionRepository).save(saved.capture());
+        assertEquals(0, new BigDecimal("150.25").compareTo(saved.getValue().getCostBasis()));
+    }
+
+    @Test
+    void sync_updatesCostBasis_onExistingPosition() throws Exception {
+        // upsert()'s "already present" branch - a re-sync must overwrite
+        // the stored cost basis with whatever the provider reports now,
+        // same as it already does for quantity.
+        Instrument aapl = new Instrument("AAPL", "Apple Inc", null);
+        Position existingPosition = new Position(USER_ID, aapl, new BigDecimal("5"), new BigDecimal("100.00"));
+        when(brokerClient.hasConnectedAccounts()).thenReturn(true);
+        when(brokerClient.fetchHoldings())
+                .thenReturn(List.of(new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("8"), new BigDecimal("160.50"))));
+        when(instrumentResolutionService.resolve("AAPL")).thenReturn(aapl);
+        when(positionRepository.findByUserIdAndInstrumentId(eq(USER_ID), any())).thenReturn(Optional.of(existingPosition));
+        when(positionRepository.findAllByUserIdFetchInstrument(USER_ID)).thenReturn(List.of(existingPosition));
+
+        mockMvc.perform(post("/positions/sync").principal(allowedUser()))
+                .andExpect(status().isOk());
+
+        assertEquals(0, new BigDecimal("160.50").compareTo(existingPosition.getCostBasis()));
     }
 
     @Test

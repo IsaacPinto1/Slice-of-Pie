@@ -22,7 +22,7 @@ public class PositionDtos {
             // the full reasoning (kept once there since both DTOs pull it
             // the same way).
             BigDecimal price,
-            BigDecimal costbasis
+            BigDecimal costBasis
     ) {
         public static PositionItemResponse from(Position position) {
             Instrument instrument = position.getInstrument();

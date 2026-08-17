@@ -140,7 +140,7 @@ class PositionFlowTest {
     void sync_pullsHoldings_andPersistsAsPositions() {
         when(brokerClient.hasConnectedAccounts()).thenReturn(true);
         when(brokerClient.fetchHoldings())
-                .thenReturn(List.of(new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("5"))));
+                .thenReturn(List.of(new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("5"), new BigDecimal("150.25"))));
 
         PositionResponse synced = client.post()
                 .uri("/positions/sync")
@@ -155,6 +155,7 @@ class PositionFlowTest {
         assertEquals(1, synced.items().size());
         assertEquals("AAPL", synced.items().get(0).ticker());
         assertEquals(0, new BigDecimal("5").compareTo(synced.items().get(0).quantity()));
+        assertEquals(0, new BigDecimal("150.25").compareTo(synced.items().get(0).costBasis()));
 
         // GET /positions afterward reflects what sync persisted, without
         // calling the provider again.
@@ -170,6 +171,7 @@ class PositionFlowTest {
         assertNotNull(fetched);
         assertEquals(1, fetched.items().size());
         assertEquals("AAPL", fetched.items().get(0).ticker());
+        assertEquals(0, new BigDecimal("150.25").compareTo(fetched.items().get(0).costBasis()));
     }
 
     @Test
@@ -177,8 +179,8 @@ class PositionFlowTest {
         when(brokerClient.hasConnectedAccounts()).thenReturn(true);
         when(brokerClient.fetchHoldings())
                 .thenReturn(List.of(
-                        new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("5")),
-                        new BrokerHolding("TSLA", "Tesla Inc", new BigDecimal("2"))));
+                        new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("5"), new BigDecimal("150.25")),
+                        new BrokerHolding("TSLA", "Tesla Inc", new BigDecimal("2"), new BigDecimal("220.00"))));
 
         client.post()
                 .uri("/positions/sync")
@@ -188,7 +190,7 @@ class PositionFlowTest {
 
         // Second sync only reports AAPL - TSLA must be reconciled away.
         when(brokerClient.fetchHoldings())
-                .thenReturn(List.of(new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("5"))));
+                .thenReturn(List.of(new BrokerHolding("AAPL", "Apple Inc", new BigDecimal("5"), new BigDecimal("150.25"))));
 
         PositionResponse resynced = client.post()
                 .uri("/positions/sync")

@@ -95,12 +95,12 @@ class SnapTradeAccountClientTest {
 
         mockServer.expect(requestTo(containsString("/accounts/acct-1/positions/all")))
                 .andRespond(withSuccess("""
-                        {"results":[{"instrument":{"symbol":"AAPL","description":"Apple Inc"},"units":5}]}
+                        {"results":[{"instrument":{"symbol":"AAPL","description":"Apple Inc"},"units":5,"cost_basis":100}]}
                         """, MediaType.APPLICATION_JSON));
 
         mockServer.expect(requestTo(containsString("/accounts/acct-2/positions/all")))
                 .andRespond(withSuccess("""
-                        {"results":[{"instrument":{"symbol":"AAPL","description":"Apple Inc"},"units":3.5}]}
+                        {"results":[{"instrument":{"symbol":"AAPL","description":"Apple Inc"},"units":3.5,"cost_basis":120}]}
                         """, MediaType.APPLICATION_JSON));
 
         List<BrokerHolding> holdings = client.fetchHoldings();
@@ -108,6 +108,49 @@ class SnapTradeAccountClientTest {
         assertEquals(1, holdings.size());
         assertEquals("AAPL", holdings.get(0).ticker());
         assertEquals(0, new BigDecimal("8.5").compareTo(holdings.get(0).quantity()));
+        // Weighted average across the two accounts: (5*100 + 3.5*120) / 8.5
+        assertEquals(0, new BigDecimal("108.23529412").compareTo(holdings.get(0).costBasis()));
+    }
+
+    @Test
+    void fetchHoldings_defaultsCostBasisToZero_whenProviderOmitsIt() {
+        // Some SnapTrade position shapes don't include cost_basis at all -
+        // it must default to zero rather than blow up the sync (Position's
+        // cost_basis column is NOT NULL).
+        mockServer.expect(requestTo(containsString("/accounts")))
+                .andRespond(withSuccess("""
+                        [{"id":"acct-1","name":"Robinhood"}]
+                        """, MediaType.APPLICATION_JSON));
+
+        mockServer.expect(requestTo(containsString("/accounts/acct-1/positions/all")))
+                .andRespond(withSuccess("""
+                        {"results":[{"instrument":{"symbol":"AAPL","description":"Apple Inc"},"units":5}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        List<BrokerHolding> holdings = client.fetchHoldings();
+
+        assertEquals(1, holdings.size());
+        assertEquals(0, BigDecimal.ZERO.compareTo(holdings.get(0).costBasis()));
+    }
+
+    @Test
+    void fetchHoldings_readsCostBasis_fromSnapTradePositionShape() {
+        // Mirrors the documented snaptrade positions/all response shape:
+        // {"units": "0.472165", "price": "225.17", "cost_basis": "211.79", ...}
+        mockServer.expect(requestTo(containsString("/accounts")))
+                .andRespond(withSuccess("""
+                        [{"id":"acct-1","name":"Robinhood"}]
+                        """, MediaType.APPLICATION_JSON));
+
+        mockServer.expect(requestTo(containsString("/accounts/acct-1/positions/all")))
+                .andRespond(withSuccess("""
+                        {"results":[{"instrument":{"symbol":"AAPL","description":"Apple Inc"},"units":"0.472165","price":"225.17","cost_basis":"211.79","currency":"USD"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        List<BrokerHolding> holdings = client.fetchHoldings();
+
+        assertEquals(1, holdings.size());
+        assertEquals(0, new BigDecimal("211.79").compareTo(holdings.get(0).costBasis()));
     }
 
     @Test

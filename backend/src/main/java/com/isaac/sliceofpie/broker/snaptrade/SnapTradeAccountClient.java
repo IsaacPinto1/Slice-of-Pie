@@ -89,7 +89,11 @@ public class SnapTradeAccountClient implements BrokerClient {
 
         String ticker = instrument.symbol();
         BigDecimal quantity = position.units();
-        BigDecimal costBasis = position.cost_basis();
+        // SnapTrade doesn't guarantee cost_basis on every position shape
+        // (e.g. it's routinely absent for cash-like or newly-opened
+        // positions) - default to zero rather than let a null ripple into
+        // the merge math below or the non-nullable Position column.
+        BigDecimal costBasis = position.cost_basis() != null ? position.cost_basis() : BigDecimal.ZERO;
         String name = instrument.description();
 
         holdingsByTicker.merge(
