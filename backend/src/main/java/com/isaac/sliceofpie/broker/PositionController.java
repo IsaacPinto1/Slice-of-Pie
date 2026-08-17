@@ -33,13 +33,8 @@ public class PositionController {
         this.brokerAccessGuard = brokerAccessGuard;
     }
 
-    // Deliberately does NOT go through allow()/BrokerAccessGuard#assertAllowed
-    // - the whole point is to tell the frontend whether the user is allowed
-    // without throwing, so it's safe to fire in parallel with /me and
-    // /watchlist on initial load (see BrokerAllowedResponse). Every other
-    // broker route still enforces the allowlist itself and still 404s for
-    // a non-allowed user exactly as before - this endpoint only changes
-    // how quickly the frontend finds out, not who can reach the real data.
+    // Quick and cheap check to see if the user is authenticated for broker access via 
+    // allowed usernames list. Designed to be run on page load along (like /me)
     @GetMapping("/broker/allowed")
     public BrokerAllowedResponse allowed(Authentication authentication) {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
