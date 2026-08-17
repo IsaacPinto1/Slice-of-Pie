@@ -16,44 +16,26 @@ export default function Dashboard() {
     const [error, setError] = useState("");
 
     // Broker/positions state. brokerAllowed stays false until a real 200
-    // comes back from GET /broker/status - a non-allowed user's request
-    // fails (deliberately indistinguishable from a 404 on a route that
-    // doesn't exist - see BrokerAccessGuard), so the safe default is
-    // "assume not allowed" and only turn the feature on once it's actually
-    // confirmed. That's what keeps the whole Positions sidebar section -
-    // and everything in it - showing zero evidence positions exist for
-    // anyone not on the allowlist.
+    // comes back from GET /broker/status, only allowing the allowed users 
     const [brokerAllowed, setBrokerAllowed] = useState(false);
     const [connected, setConnected] = useState(false);
     const [positions, setPositions] = useState([]);
     // positionsLoading: true only while there's genuinely nothing to show
-    // yet (the very first DB read on mount) - this is what lets
-    // PortfolioSidebar fall back to its spinner-only state instead of
-    // rendering an empty list.
+    // yet (the very first DB read on mount)
     const [positionsLoading, setPositionsLoading] = useState(false);
     // positionsSyncing: a live reconciliation against the broker is in
     // flight (either the automatic background one on load, or the manual
-    // "Sync positions" button). Deliberately separate from
-    // positionsLoading - whatever's already on screen (freshly read from
-    // the DB, or left over from the previous sync) stays exactly as-is
-    // the whole time; this only drives a small indicator, never a
-    // full-list spinner.
+    // "Sync positions" button). Drives small indicator only
     const [positionsSyncing, setPositionsSyncing] = useState(false);
 
     // Guards state updates from in-flight requests (the background sync
     // in particular) that resolve after the component's gone - same
     // "cancelled" idea the load effect below uses locally, but shared
-    // since syncPositionsInBackground can outlive that effect.
+    // since syncPositionsInBackground can outlive that effect. This is
+    // important for strict mode where everything is mounted/unmounted twice
     //
-    // The setup body must explicitly set this true, not just rely on
-    // useRef(true)'s initial value: StrictMode double-invokes every
-    // effect on mount (mount -> cleanup -> mount again) to catch exactly
-    // this kind of bug, and that simulated cleanup flips the ref false.
-    // Without resetting it here, the ref would stay false for the rest
-    // of the component's real life, silently dropping every future
-    // "if (mountedRef.current) setState(...)" - which is exactly what
-    // made positionsSyncing get stuck true forever.
     const mountedRef = useRef(true);
+
     useEffect(() => {
         mountedRef.current = true;
         return () => { mountedRef.current = false; };
@@ -85,14 +67,9 @@ export default function Dashboard() {
         }
     };
 
-    // Reconciles with the live provider. Deliberately never touches
-    // positionsLoading - whatever's already rendered stays on screen for
-    // the whole call; positionsSyncing only drives a small indicator in
-    // the section header (see PortfolioSidebar), not a full-list
-    // spinner. A failure here is swallowed rather than surfaced or
-    // re-fetched: the DB snapshot already showing is a perfectly good
-    // fallback, and a background reconciliation erroring out isn't
-    // something the user needs to react to.
+    // Reconcile live provider without touching what's on screen. Failures
+    // here are swallowed since the display is already a good fallback, and
+    // the user shouldn't have to react to a background refresh
     const syncPositionsInBackground = async () => {
         if (positionsSyncing) return;
         setPositionsSyncing(true);
