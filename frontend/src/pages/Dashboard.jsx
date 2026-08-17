@@ -6,7 +6,7 @@ import { addTicker, getWatchlist, removeTicker } from "../api/watchlist";
 import { createInstrument } from "../api/instruments";
 import { getMe } from "../api/user";
 import { getBrokerAllowed, getBrokerStatus } from "../api/broker";
-import { syncPositions } from "../api/positions";
+import { getPositions, syncPositions } from "../api/positions";
 import BrandMark from "../components/BrandMark";
 
 export default function Dashboard() {
@@ -16,9 +16,11 @@ export default function Dashboard() {
     const [error, setError] = useState("");
 
     // Broker/positions state. brokerAllowed comes from GET /broker/allowed
-    // - a cheap env-var check fetched alongside /me and /watchlist below,
-    // so the Positions section can render (as a skeleton) in the same
-    // paint as the watchlist instead of waiting on a slower round trip.
+    // - a cheap env-var check fetched alongside /me and /watchlist below.
+    // GET /positions (the stored positions themselves) is fetched in that
+    // same wave too - see the load effect - so on a refresh/subsequent
+    // login the Positions section can paint with real data in the very
+    // first render, the same as watchlist, rather than popping in later.
     const [brokerAllowed, setBrokerAllowed] = useState(false);
     const [connected, setConnected] = useState(false);
     const [positions, setPositions] = useState([]);
@@ -84,6 +86,21 @@ export default function Dashboard() {
         const load = async () => {
             setLoading(true);
             setError("");
+
+            // Fired immediately, in parallel with the core batch below -
+            // not sequenced behind the allow-check. GET /positions is a
+            // cheap DB read (see api/positions.js) so there's no reason to
+            // make it wait for anything: firing it up front means stored
+            // positions land in the same round trip as /me and /watchlist,
+            // so they can paint in the very first render instead of
+            // popping in a beat later. It 404s for a non-allowed user
+            // (same allowlist guard as every other broker route besides
+            // /broker/allowed) - that's expected and swallowed here via
+            // .catch(() => null), same as any other rejection would be:
+            // security here comes from the backend's own allowlist check
+            // on every request, not from the frontend deciding not to ask.
+            const positionsPromise = getPositions().catch(() => null);
+
             let allowed = false;
             try {
                 const [meRes, watchlistRes, allowedRes] = await Promise.all([
@@ -102,43 +119,68 @@ export default function Dashboard() {
                 if (!cancelled) setLoading(false);
             }
 
+            // Only trust positionsPromise's result once we know the user
+            // is actually allowed - a stray 200 body isn't expected for a
+            // disallowed user, but this keeps the frontend from ever
+            // acting on positions data without an allowed check having
+            // passed, regardless of what the backend does.
+            const positionsRes = await positionsPromise;
+            if (cancelled) return;
+            const stored = (allowed && positionsRes) ? positionsRes.data.items : [];
+            setPositions(stored);
+
             if (!allowed || cancelled) return;
 
             // Broker/positions is a separate, best-effort load that only
             // starts once the allow-check above already came back true -
             // this is the live-data phase, on top of the skeleton the
-            // Positions section is already showing. Deliberately does the
-            // initial reconcile (syncPositions) itself here, under the
-            // same spinner, rather than reading whatever's in the DB and
-            // quietly reconciling afterward (that's still exactly what
-            // syncPositionsInBackground/the "Sync positions" button do for
-            // every subsequent sync) - on this very first load the DB can
-            // easily be empty or stale, and revealing that before the live
-            // reconcile catches up produced a flash of "No positions
-            // synced yet" right before the real data popped in. Waiting
-            // here means the section only ever shows one thing after the
-            // spinner: the actual result. A failure anywhere in this
-            // chain - the connected check or the sync itself - leaves the
-            // section showing "Failed to load positions" (positionsError)
-            // rather than surfacing a dashboard-wide error or hiding the
-            // section - the allow-check already established the user
-            // should see it.
-            setPositionsLoading(true);
+            // Positions section is already showing.
             try {
                 const statusRes = await getBrokerStatus();
                 if (cancelled) return;
                 setConnected(statusRes.data.connected);
 
                 if (statusRes.data.connected) {
-                    const syncRes = await syncPositions();
-                    if (cancelled) return;
-                    setPositions(syncRes.data.items);
-                    setPositionsError(false);
+                    // `stored` is the "last known state" fetched above,
+                    // already on screen by now. On a refresh/subsequent
+                    // login that's the real, already-synced positions, so
+                    // there's nothing left to do but reconcile quietly.
+                    // Only on a genuine first-ever load (nothing synced
+                    // yet) does it come back empty - and since there's
+                    // nothing on screen to fall back to, that specific
+                    // case waits on the live sync under a full spinner
+                    // instead, rather than flashing "No positions synced
+                    // yet" right before the real data pops in.
+                    if (stored.length === 0) {
+                        // True initial load: nothing to show yet, so keep
+                        // the whole section spinning until the first real
+                        // sync completes, and surface a genuine failure
+                        // here rather than swallowing it - there's no good
+                        // fallback on screen yet for a failure to hide
+                        // behind (contrast with syncPositionsInBackground
+                        // below, which always has one).
+                        setPositionsLoading(true);
+                        try {
+                            const syncRes = await syncPositions();
+                            if (cancelled) return;
+                            setPositions(syncRes.data.items);
+                            setPositionsError(false);
+                        } catch {
+                            if (!cancelled) setPositionsError(true);
+                        } finally {
+                            if (!cancelled) setPositionsLoading(false);
+                        }
+                    } else {
+                        // Refresh/subsequent login: last known state is
+                        // already on screen, so just reconcile quietly in
+                        // the background - this drives the small
+                        // "syncing" indicator and the sync button's label,
+                        // and swallows its own errors.
+                        syncPositionsInBackground();
+                    }
                 }
             } catch {
                 if (!cancelled) setPositionsError(true);
-            } finally {
-                if (!cancelled) setPositionsLoading(false);
             }
         };
 
@@ -216,14 +258,14 @@ export default function Dashboard() {
                     <>
                         <div className="dashboard-head">
                             <h1>{brokerAllowed ? "Your portfolio" : "Your watchlist"}</h1>
-                            {brokerAllowed && connected && !positionsLoading && (
+                            {brokerAllowed && connected && (
                                 <div className="dashboard-head-actions">
                                     <button
                                         className="secondary small"
                                         onClick={handleSyncPositions}
-                                        disabled={positionsSyncing}
+                                        disabled={positionsSyncing || positionsLoading}
                                     >
-                                        {positionsSyncing ? "Syncing..." : "Sync positions"}
+                                        {(positionsSyncing || positionsLoading) ? "Syncing..." : "Sync positions"}
                                     </button>
                                 </div>
                             )}
