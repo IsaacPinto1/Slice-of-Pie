@@ -31,7 +31,7 @@ public class SnapTradeDtos {
     public record SnapTradePosition(
             SnapTradeInstrument instrument,
             BigDecimal units,
-            BigDecimal costBasis
+            BigDecimal cost_basis
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

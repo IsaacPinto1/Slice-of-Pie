@@ -89,7 +89,7 @@ public class SnapTradeAccountClient implements BrokerClient {
 
         String ticker = instrument.symbol();
         BigDecimal quantity = position.units();
-        BigDecimal costBasis = position.costBasis();
+        BigDecimal costBasis = position.cost_basis();
         String name = instrument.description();
 
         holdingsByTicker.merge(
