@@ -56,9 +56,9 @@ function usePositionsRankedByChange(positions) {
 // selected item, resolved fresh from positions/watchlist on every render.
 export default function PortfolioSidebar({
     brokerAllowed,
-    connected,
     positions,
     positionsLoading,
+    positionsError,
     positionsSyncing,
     watchlist,
     selected,
@@ -73,7 +73,7 @@ export default function PortfolioSidebar({
 
     return (
         <nav className="sidebar" aria-label="Positions and watchlist">
-            {brokerAllowed && connected && (
+            {brokerAllowed && (
                 <SidebarSection
                     title="Positions"
                     count={positions.length}
@@ -86,6 +86,8 @@ export default function PortfolioSidebar({
                         <div className="loading-row sidebar-loading">
                             <span className="spinner" />
                         </div>
+                    ) : positionsError ? (
+                        <p className="sidebar-empty sidebar-error">Failed to load positions.</p>
                     ) : positions.length === 0 ? (
                         <p className="sidebar-empty">No positions synced yet.</p>
                     ) : (

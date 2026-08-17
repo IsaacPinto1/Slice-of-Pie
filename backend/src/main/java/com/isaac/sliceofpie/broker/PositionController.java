@@ -1,6 +1,7 @@
 package com.isaac.sliceofpie.broker;
 
 import com.isaac.sliceofpie.auth.AuthDtos.UserPrincipal;
+import com.isaac.sliceofpie.broker.PositionDtos.BrokerAllowedResponse;
 import com.isaac.sliceofpie.broker.PositionDtos.BrokerStatusResponse;
 import com.isaac.sliceofpie.broker.PositionDtos.PositionItemResponse;
 import com.isaac.sliceofpie.broker.PositionDtos.PositionResponse;
@@ -30,6 +31,19 @@ public class PositionController {
     public PositionController(PositionService positionService, BrokerAccessGuard brokerAccessGuard) {
         this.positionService = positionService;
         this.brokerAccessGuard = brokerAccessGuard;
+    }
+
+    // Deliberately does NOT go through allow()/BrokerAccessGuard#assertAllowed
+    // - the whole point is to tell the frontend whether the user is allowed
+    // without throwing, so it's safe to fire in parallel with /me and
+    // /watchlist on initial load (see BrokerAllowedResponse). Every other
+    // broker route still enforces the allowlist itself and still 404s for
+    // a non-allowed user exactly as before - this endpoint only changes
+    // how quickly the frontend finds out, not who can reach the real data.
+    @GetMapping("/broker/allowed")
+    public BrokerAllowedResponse allowed(Authentication authentication) {
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        return new BrokerAllowedResponse(brokerAccessGuard.isAllowed(principal.username()));
     }
 
     @GetMapping("/broker/status")

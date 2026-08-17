@@ -12,6 +12,17 @@ public class PositionDtos {
 
     public record BrokerStatusResponse(boolean connected) {}
 
+    // Cheap, non-throwing counterpart to BrokerAccessGuard#assertAllowed -
+    // just an env-var Set#contains check, no external call. Meant to be
+    // fetched alongside /me and /watchlist on initial load so the frontend
+    // knows whether to render the Positions section at all before it ever
+    // touches /broker/status (which can be slow/flaky - it calls out to
+    // the actual provider once connected). Deliberately a plain 200 with a
+    // boolean rather than the 404-if-not-allowed treatment the other
+    // broker routes use - see BrokerAccessGuard's javadoc for why those
+    // hide behind a 404, and PositionController for why this one doesn't.
+    public record BrokerAllowedResponse(boolean allowed) {}
+
     public record PositionItemResponse(
             Long instrumentId,
             String ticker,

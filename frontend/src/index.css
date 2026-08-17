@@ -817,6 +817,10 @@ button.small {
   padding: 4px 6px 10px;
 }
 
+.sidebar-error {
+  color: var(--danger);
+}
+
 .sidebar-loading {
   padding: 10px 0;
 }

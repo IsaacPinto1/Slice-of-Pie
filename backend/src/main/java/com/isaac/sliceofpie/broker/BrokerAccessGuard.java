@@ -25,8 +25,12 @@ public class BrokerAccessGuard {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    public boolean isAllowed(String username) {
+        return username != null && allowedUsernames.contains(username);
+    }
+
     public void assertAllowed(String username) {
-        if (username == null || !allowedUsernames.contains(username)) {
+        if (!isAllowed(username)) {
             throw new BrokerAccessDeniedException();
         }
     }

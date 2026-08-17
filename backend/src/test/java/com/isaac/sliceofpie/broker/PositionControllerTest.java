@@ -90,6 +90,22 @@ class PositionControllerTest {
     }
 
     @Test
+    void allowed_returns200_withAllowedTrue_forAllowedUser() throws Exception {
+        mockMvc.perform(get("/broker/allowed").principal(allowedUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.allowed").value(true));
+    }
+
+    @Test
+    void allowed_returns200_withAllowedFalse_forNonAllowedUser() throws Exception {
+        // Unlike every other broker route, this one is a plain 200 either
+        // way - see PositionDtos.BrokerAllowedResponse.
+        mockMvc.perform(get("/broker/allowed").principal(disallowedUser()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.allowed").value(false));
+    }
+
+    @Test
     void status_returns200_withConnectedTrue() throws Exception {
         when(brokerClient.hasConnectedAccounts()).thenReturn(true);
 
