@@ -1,6 +1,11 @@
 History via alpaca: https://docs.alpaca.markets/us/reference/stockbars
 
-Prices go stale if backend server is down (scheduler doesn't run) - 
+Prices go stale if backend server is down (scheduler doesn't run) - need to streamline
+how prices get updated (on watchlist add, on position sync, on login, etc.)
+
+Refreshing price should refresh % change
+
+Should be able to search watchlist/positions
 
 Thesis statements should be tagged to a price point
 
