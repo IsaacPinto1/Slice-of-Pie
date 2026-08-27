@@ -26,7 +26,14 @@ public class PriceService {
 
     private final InstrumentResolutionService instrumentResolutionService;
 
-    private final int PRICE_LIFETIME_HOURS = 1;
+    // How long a persisted price is considered fresh before getPrice() will
+    // re-fetch it, and (via PriceRefreshScheduler.REFRESH_WINDOW_MINUTES)
+    // how often the background job sweeps every instrument regardless of
+    // whether anyone's actively looking at it. Public so both call sites -
+    // and the frontend's staleness check, via staleAfterMinutes on
+    // PriceResponse - stay in lockstep with a single number instead of
+    // drifting apart.
+    public static final int STALE_AFTER_MINUTES = 60;
 
     public PriceService(PriceLookupClient priceLookupClient, InstrumentResolutionService instrumentResolutionService){
         this.priceLookupClient = priceLookupClient;
@@ -64,16 +71,16 @@ public class PriceService {
     }
 
     /*
-    * Returns cached price with above defined hour timeout, or looks up latest price otherwise
+    * Returns cached price with above defined timeout, or looks up latest price otherwise
     */
     @Transactional
     public PriceResponse getPrice(Long instrumentId){
         Instrument instrument = instrumentResolutionService.getById(instrumentId);
 
         if (instrument.getPriceUpdatedAt() != null &&
-            Duration.between(instrument.getPriceUpdatedAt(), Instant.now()).compareTo(Duration.ofHours(PRICE_LIFETIME_HOURS )) < 0) {
+            Duration.between(instrument.getPriceUpdatedAt(), Instant.now()).compareTo(Duration.ofMinutes(STALE_AFTER_MINUTES)) < 0) {
 
-            return PriceResponse.from(instrument.getPrice());
+            return toResponse(instrument);
         }
 
         return forceLatestPrice(instrument);
@@ -89,7 +96,19 @@ public class PriceService {
         }
 
         instrument.setPrice(res.price().doubleValue());
-        return res;
+        // Build the response from the instrument itself, not the raw
+        // provider response - res has no priceUpdatedAt (see
+        // PriceResponse's 1-arg constructor), while instrument.setPrice()
+        // just stamped a real one.
+        return toResponse(instrument);
+    }
+
+    private static PriceResponse toResponse(Instrument instrument) {
+        return new PriceResponse(
+                BigDecimal.valueOf(instrument.getPrice()),
+                instrument.getPriceUpdatedAt(),
+                STALE_AFTER_MINUTES
+        );
     }
 
     /*

@@ -1,8 +1,10 @@
 package com.isaac.sliceofpie.broker;
 
 import com.isaac.sliceofpie.instrument.Instrument;
+import com.isaac.sliceofpie.prices.PriceService;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 // Single DTO file for the whole broker/positions feature - status,
@@ -33,6 +35,9 @@ public class PositionDtos {
             // the full reasoning (kept once there since both DTOs pull it
             // the same way).
             BigDecimal price,
+            // Mirrors WatchlistDtos.WatchlistItemResponse - see there for why.
+            Instant priceUpdatedAt,
+            int staleAfterMinutes,
             BigDecimal costBasis
     ) {
         public static PositionItemResponse from(Position position) {
@@ -43,6 +48,8 @@ public class PositionDtos {
                     instrument.getName(),
                     position.getQuantity(),
                     BigDecimal.valueOf(instrument.getPrice()),
+                    instrument.getPriceUpdatedAt(),
+                    PriceService.STALE_AFTER_MINUTES,
                     position.getCostBasis()
             );
         }

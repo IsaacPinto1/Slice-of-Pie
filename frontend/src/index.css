@@ -12,6 +12,7 @@
   --danger: #d13438;
   --danger-bg: rgba(209, 52, 56, 0.08);
   --success: #1a8754;
+  --warn: #b45309;
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
@@ -49,6 +50,7 @@
     --danger: #f27373;
     --danger-bg: rgba(242, 115, 115, 0.12);
     --success: #4ade80;
+    --warn: #fbbf24;
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
@@ -591,6 +593,24 @@ button.small {
   font-weight: 600;
   color: var(--text-h);
   min-width: 20px;
+}
+
+/* Stale-price indicator - applied alongside price-value/sidebar-item-price/
+   position-metric-value wherever a price is shown, whenever
+   isPriceStale() (see utils/price.js) says it's older than the backend's
+   staleAfterMinutes. */
+.price-stale {
+  color: var(--warn, #b45309);
+}
+
+.stale-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--warn, #b45309);
+  vertical-align: middle;
 }
 
 .icon-button {

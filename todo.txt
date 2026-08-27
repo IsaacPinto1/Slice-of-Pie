@@ -1,5 +1,14 @@
 History via alpaca: https://docs.alpaca.markets/us/reference/stockbars
 
+Generally, prices should force update when the server goes up, and the frontend should display a
+stale state (like Robinhood goes grey) until the last_updated_at time is recent enough (within the 
+last SCHEDULED_TIME refresh window)
+
+View position -> refresh price -> click off -> go back to position doesn't show the updated price,
+but upon refresh it's updated
+
+List should scroll relative to the thesis
+
 Prices go stale if backend server is down (scheduler doesn't run) - need to streamline
 how prices get updated (on watchlist add, on position sync, on login, etc.)
 

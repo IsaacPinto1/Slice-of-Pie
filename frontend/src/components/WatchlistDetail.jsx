@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getThesis } from "../api/thesis";
 import { forceLatestPrice } from "../api/price";
+import { isPriceStale } from "../utils/price";
 import ThesisEditor from "./ThesisEditor";
 
 // Minimum time between force-refresh clicks. Every click is a guaranteed
@@ -65,7 +66,14 @@ export default function WatchlistDetail({ item, onRemove }) {
         setForcing(true);
         try {
             const res = await forceLatestPrice(instrumentId);
-            setForcedPrice(res.data.price);
+            // Widened to carry the forced response's priceUpdatedAt (and
+            // staleAfterMinutes), not just the raw number - see
+            // PositionDetail's identical change for why.
+            setForcedPrice({
+                price: res.data.price,
+                priceUpdatedAt: res.data.priceUpdatedAt,
+                staleAfterMinutes: res.data.staleAfterMinutes,
+            });
         } catch {
             alert("Error getting price");
         } finally {
@@ -73,7 +81,8 @@ export default function WatchlistDetail({ item, onRemove }) {
         }
     };
 
-    const price = forcedPrice ?? item.price;
+    const price = forcedPrice?.price ?? item.price;
+    const stale = isPriceStale(forcedPrice ?? item);
 
     return (
         <div className="detail-card">
@@ -111,8 +120,12 @@ export default function WatchlistDetail({ item, onRemove }) {
             </div>
 
             <div className="price-row">
-                <span className="price-value">
+                <span
+                    className={`price-value${stale ? " price-stale" : ""}`}
+                    title={stale ? "Price may be out of date" : undefined}
+                >
                     {price != null ? `$${price}` : "—"}
+                    {stale && <span className="stale-dot" aria-label="stale price" />}
                 </span>
                 <button
                     type="button"

@@ -1,6 +1,7 @@
 package com.isaac.sliceofpie.watchlist;
 
 import com.isaac.sliceofpie.instrument.Instrument;
+import com.isaac.sliceofpie.prices.PriceService;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -21,6 +22,12 @@ public class WatchlistDtos {
             // that wants the guaranteed-latest number for one focused item
             // can hit /price or /price/force for that item specifically.
             BigDecimal price,
+            // priceUpdatedAt/staleAfterMinutes mirror PriceDtos.PriceResponse
+            // so the frontend can flag a stale price wherever it's shown,
+            // not just right after a manual /price/force refresh - this is
+            // the default source for the sidebar/detail panels.
+            Instant priceUpdatedAt,
+            int staleAfterMinutes,
             Instant createdAt
     ) {
         public static WatchlistItemResponse from(WatchlistItem item) {
@@ -30,6 +37,8 @@ public class WatchlistDtos {
                     instrument.getTicker(),
                     instrument.getName(),
                     BigDecimal.valueOf(instrument.getPrice()),
+                    instrument.getPriceUpdatedAt(),
+                    PriceService.STALE_AFTER_MINUTES,
                     item.getCreatedAt()
             );
         }
