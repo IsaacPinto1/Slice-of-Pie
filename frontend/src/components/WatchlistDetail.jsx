@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getThesis } from "../api/thesis";
 import { forceLatestPrice } from "../api/price";
+import { formatRelativeTime } from "../utils/time";
 import ThesisEditor from "./ThesisEditor";
 
 // Minimum time between force-refresh clicks. Every click is a guaranteed
@@ -77,6 +78,8 @@ export default function WatchlistDetail({ item, onRemove }) {
     };
 
     const price = forcedPrice?.price ?? item.price;
+    const priceUpdatedAt = forcedPrice?.priceUpdatedAt ?? item.priceUpdatedAt;
+    const updatedLabel = formatRelativeTime(priceUpdatedAt);
 
     return (
         <div className="detail-card">
@@ -141,6 +144,14 @@ export default function WatchlistDetail({ item, onRemove }) {
                         <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
                     </svg>
                 </button>
+                {updatedLabel && (
+                    <span
+                        className="price-updated-label"
+                        title={priceUpdatedAt ? new Date(priceUpdatedAt).toLocaleString() : undefined}
+                    >
+                        Updated {updatedLabel}
+                    </span>
+                )}
             </div>
 
             {loadingThesis ? (
