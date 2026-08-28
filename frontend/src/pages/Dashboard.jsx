@@ -177,6 +177,27 @@ export default function Dashboard() {
         }
     };
 
+    // Called by PositionDetail/WatchlistDetail after a successful force
+    // price refresh. Patches the matching row in place here - the single
+    // array both the sidebar and the detail panel's `item` prop are
+    // derived from - rather than the detail component holding its own
+    // "forced price" state that only it can see. That local-state version
+    // is what caused the price to look stuck: the sidebar reads straight
+    // from positions/watchlist and never knew a refresh happened, and
+    // switching to a different row and back re-resolved `item` from the
+    // still-stale array, discarding the local override.
+    const handlePositionPriceUpdate = (instrumentId, priceUpdate) => {
+        setPositions((prev) =>
+            prev.map((p) => (p.instrumentId === instrumentId ? { ...p, ...priceUpdate } : p))
+        );
+    };
+
+    const handleWatchlistPriceUpdate = (instrumentId, priceUpdate) => {
+        setWatchlist((prev) =>
+            prev.map((w) => (w.instrumentId === instrumentId ? { ...w, ...priceUpdate } : w))
+        );
+    };
+
     const logout = () => {
         localStorage.removeItem("token");
         window.location.href = "/login";
@@ -253,7 +274,12 @@ export default function Dashboard() {
                             />
 
                             <main className="detail-panel">
-                                <DetailPanel selected={activeDetail} onRemoveWatchlistItem={handleRemove} />
+                                <DetailPanel
+                                    selected={activeDetail}
+                                    onRemoveWatchlistItem={handleRemove}
+                                    onPositionPriceUpdate={handlePositionPriceUpdate}
+                                    onWatchlistPriceUpdate={handleWatchlistPriceUpdate}
+                                />
                             </main>
                         </div>
                     </>

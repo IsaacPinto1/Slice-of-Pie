@@ -13,20 +13,22 @@ const FORCE_REFRESH_COOLDOWN_MS = 5000;
 // this never fetches a price on load - `item.price` already came from
 // PositionItemResponse when the sidebar list loaded, so opening a
 // position is a pure render, not a network call. "Force update price" is
-// the one deliberate exception: it always hits the provider, and its
-// result overrides the list price locally until the next sync or a
-// different position is selected.
-export default function PositionDetail({ item }) {
-    const { instrumentId, ticker, name, quantity, costBasis } = item;
+// the one deliberate exception: it always hits the provider, but its
+// result is reported to Dashboard via onPriceUpdate rather than kept in
+// local state here - Dashboard's positions array is what both this
+// component's `item` prop and the sidebar are derived from, so writing
+// the refreshed price there is what keeps the two in sync (see
+// Dashboard.handlePositionPriceUpdate).
+export default function PositionDetail({ item, onPriceUpdate }) {
+    const { instrumentId, ticker, name, quantity, price, priceUpdatedAt, costBasis } = item;
     const [thesis, setThesis] = useState("");
     const [loadingThesis, setLoadingThesis] = useState(true);
-    const [forcedPrice, setForcedPrice] = useState(null);
     const [forcing, setForcing] = useState(false);
     const lastForceAtRef = useRef(0);
 
-    // No need to reset forcedPrice/thesis on instrumentId change here -
-    // DetailPanel keys this component by instrumentId, so switching
-    // positions remounts it with fresh state entirely.
+    // No need to reset thesis on instrumentId change here - DetailPanel
+    // keys this component by instrumentId, so switching positions
+    // remounts it with fresh state entirely.
     useEffect(() => {
         let cancelled = false;
 
@@ -55,7 +57,7 @@ export default function PositionDetail({ item }) {
         setForcing(true);
         try {
             const res = await forceLatestPrice(instrumentId);
-            setForcedPrice({
+            onPriceUpdate(instrumentId, {
                 price: res.data.price,
                 priceUpdatedAt: res.data.priceUpdatedAt,
             });
@@ -66,8 +68,6 @@ export default function PositionDetail({ item }) {
         }
     };
 
-    const price = forcedPrice?.price ?? item.price;
-    const priceUpdatedAt = forcedPrice?.priceUpdatedAt ?? item.priceUpdatedAt;
     const updatedLabel = formatRelativeTime(priceUpdatedAt);
     const marketValue = price != null ? Number(quantity) * Number(price) : null;
     // Same "0 cost basis reads as unknown, not -100%" rule as
