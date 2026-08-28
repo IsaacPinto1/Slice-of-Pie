@@ -4,11 +4,6 @@ Generally, prices should force update when the server goes up, and the frontend 
 stale state (like Robinhood goes grey) until the last_updated_at time is recent enough (within the 
 last SCHEDULED_TIME refresh window)
 
-View position -> refresh price -> click off -> go back to position doesn't show the updated price,
-but upon refresh it's updated. Same thing with the staleness indicator, and the % change.
-These details should update while persisting it however the objects are persisted on the frontend,
-and should reorder the side list if necessary
-
 List should scroll relative to the thesis
 
 Prices go stale if backend server is down (scheduler doesn't run) - need to streamline
