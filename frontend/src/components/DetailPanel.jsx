@@ -8,9 +8,14 @@ import WatchlistDetail from "./WatchlistDetail";
 // than here (keeps a removed/desynced row from ever reaching this panel).
 //
 // The `key` on each detail component forces a clean remount when the
-// selected instrument changes, so per-item state (thesis, forced price,
-// confirm-remove) never leaks from one ticker to the next.
-export default function DetailPanel({ selected, onRemoveWatchlistItem }) {
+// selected instrument changes, so per-item state (thesis, confirm-remove)
+// never leaks from one ticker to the next. 
+export default function DetailPanel({
+    selected,
+    onRemoveWatchlistItem,
+    onPositionPriceUpdate,
+    onWatchlistPriceUpdate,
+}) {
     if (!selected) {
         return (
             <div className="detail-panel-empty empty-state">
@@ -21,7 +26,13 @@ export default function DetailPanel({ selected, onRemoveWatchlistItem }) {
     }
 
     if (selected.type === "position") {
-        return <PositionDetail key={selected.item.instrumentId} item={selected.item} />;
+        return (
+            <PositionDetail
+                key={selected.item.instrumentId}
+                item={selected.item}
+                onPriceUpdate={onPositionPriceUpdate}
+            />
+        );
     }
 
     return (
@@ -29,6 +40,7 @@ export default function DetailPanel({ selected, onRemoveWatchlistItem }) {
             key={selected.item.instrumentId}
             item={selected.item}
             onRemove={onRemoveWatchlistItem}
+            onPriceUpdate={onWatchlistPriceUpdate}
         />
     );
 }

@@ -14,20 +14,21 @@ const FORCE_REFRESH_COOLDOWN_MS = 5000;
 // Focused/large view for a single watchlist ticker, shown in the detail
 // panel once its sidebar card is selected. Like PositionDetail, this
 // never fetches a price on load - `item.price` already came from
-// WatchlistItemResponse when the sidebar list loaded.
-export default function WatchlistDetail({ item, onRemove }) {
-    const { instrumentId, ticker, name } = item;
+// WatchlistItemResponse when the sidebar list loaded. A force refresh's
+// result is reported to Dashboard via onPriceUpdate rather than kept in
+// local state - see PositionDetail's identical comment for why.
+export default function WatchlistDetail({ item, onRemove, onPriceUpdate }) {
+    const { instrumentId, ticker, name, price, priceUpdatedAt } = item;
     const [thesis, setThesis] = useState("");
     const [loadingThesis, setLoadingThesis] = useState(true);
     const [removing, setRemoving] = useState(false);
     const [confirmingRemove, setConfirmingRemove] = useState(false);
-    const [forcedPrice, setForcedPrice] = useState(null);
     const [forcing, setForcing] = useState(false);
     const lastForceAtRef = useRef(0);
 
-    // No need to reset forcedPrice/confirmingRemove/thesis on instrumentId
-    // change here - DetailPanel keys this component by instrumentId, so
-    // switching tickers remounts it with fresh state entirely.
+    // No need to reset confirmingRemove/thesis on instrumentId change here
+    // - DetailPanel keys this component by instrumentId, so switching
+    // tickers remounts it with fresh state entirely.
     useEffect(() => {
         let cancelled = false;
 
@@ -66,7 +67,7 @@ export default function WatchlistDetail({ item, onRemove }) {
         setForcing(true);
         try {
             const res = await forceLatestPrice(instrumentId);
-            setForcedPrice({
+            onPriceUpdate(instrumentId, {
                 price: res.data.price,
                 priceUpdatedAt: res.data.priceUpdatedAt,
             });
@@ -77,8 +78,6 @@ export default function WatchlistDetail({ item, onRemove }) {
         }
     };
 
-    const price = forcedPrice?.price ?? item.price;
-    const priceUpdatedAt = forcedPrice?.priceUpdatedAt ?? item.priceUpdatedAt;
     const updatedLabel = formatRelativeTime(priceUpdatedAt);
 
     return (

@@ -177,6 +177,20 @@ export default function Dashboard() {
         }
     };
 
+    // Called whenever we force a price refresh so that everything downstream
+    // gets the updated value
+    const handlePositionPriceUpdate = (instrumentId, priceUpdate) => {
+        setPositions((prev) =>
+            prev.map((p) => (p.instrumentId === instrumentId ? { ...p, ...priceUpdate } : p))
+        );
+    };
+
+    const handleWatchlistPriceUpdate = (instrumentId, priceUpdate) => {
+        setWatchlist((prev) =>
+            prev.map((w) => (w.instrumentId === instrumentId ? { ...w, ...priceUpdate } : w))
+        );
+    };
+
     const logout = () => {
         localStorage.removeItem("token");
         window.location.href = "/login";
@@ -253,7 +267,12 @@ export default function Dashboard() {
                             />
 
                             <main className="detail-panel">
-                                <DetailPanel selected={activeDetail} onRemoveWatchlistItem={handleRemove} />
+                                <DetailPanel
+                                    selected={activeDetail}
+                                    onRemoveWatchlistItem={handleRemove}
+                                    onPositionPriceUpdate={handlePositionPriceUpdate}
+                                    onWatchlistPriceUpdate={handleWatchlistPriceUpdate}
+                                />
                             </main>
                         </div>
                     </>
