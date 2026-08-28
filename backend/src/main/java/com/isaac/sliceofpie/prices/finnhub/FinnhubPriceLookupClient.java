@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.isaac.sliceofpie.prices.finnhub.FinnhubDtos.FinnhubPriceResult;
-import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PriceValueResponse;
 import com.isaac.sliceofpie.prices.exception.TickerNotFoundException;
 import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
 
@@ -26,7 +26,7 @@ public class FinnhubPriceLookupClient implements PriceLookupClient {
     }
 
     @Override
-    public PriceResponse getPrice(String ticker){
+    public PriceValueResponse getPrice(String ticker){
         FinnhubPriceResult response;
         try {
             response = restClient.get()
@@ -49,6 +49,6 @@ public class FinnhubPriceLookupClient implements PriceLookupClient {
 
         // Mapping happens right here, at the edge - nothing downstream ever
         // sees a raw Finnhub shape.
-        return new PriceResponse(response.c());
+        return new PriceValueResponse(response.c());
     }
 }

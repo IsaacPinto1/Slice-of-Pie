@@ -12,7 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
-import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PriceValueResponse;
 import com.isaac.sliceofpie.prices.PriceService;
 import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
 
@@ -36,7 +36,7 @@ class PriceServiceTryFetchPriceTest {
     @Test
     void tryFetchPrice_returnsThePrice_whenLookupSucceeds() {
         priceService = new PriceService(priceLookupClient, instrumentResolutionService);
-        when(priceLookupClient.getPrice("AAPL")).thenReturn(new PriceResponse(new BigDecimal("158")));
+        when(priceLookupClient.getPrice("AAPL")).thenReturn(new PriceValueResponse(new BigDecimal("158")));
 
         Optional<BigDecimal> result = priceService.tryFetchPrice("AAPL");
 
@@ -46,7 +46,7 @@ class PriceServiceTryFetchPriceTest {
     @Test
     void tryFetchPrice_returnsEmpty_whenPriceIsNull() {
         priceService = new PriceService(priceLookupClient, instrumentResolutionService);
-        when(priceLookupClient.getPrice("BADTICKER")).thenReturn(new PriceResponse(null));
+        when(priceLookupClient.getPrice("BADTICKER")).thenReturn(new PriceValueResponse(null));
 
         Optional<BigDecimal> result = priceService.tryFetchPrice("BADTICKER");
 
@@ -56,7 +56,7 @@ class PriceServiceTryFetchPriceTest {
     @Test
     void tryFetchPrice_returnsEmpty_whenPriceIsNegative() {
         priceService = new PriceService(priceLookupClient, instrumentResolutionService);
-        when(priceLookupClient.getPrice("BADTICKER")).thenReturn(new PriceResponse(new BigDecimal("-1")));
+        when(priceLookupClient.getPrice("BADTICKER")).thenReturn(new PriceValueResponse(new BigDecimal("-1")));
 
         Optional<BigDecimal> result = priceService.tryFetchPrice("BADTICKER");
 

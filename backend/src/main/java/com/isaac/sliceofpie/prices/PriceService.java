@@ -12,7 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.isaac.sliceofpie.instrument.Instrument;
 import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
-import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PriceValueResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PricePersistedResponse;
 import com.isaac.sliceofpie.prices.exception.InvalidPriceException;
 import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
 
@@ -53,7 +54,7 @@ public class PriceService {
     */
     public Optional<BigDecimal> tryFetchPrice(String ticker) {
         try {
-            PriceResponse res = priceLookupClient.getPrice(ticker);
+            PriceValueResponse res = priceLookupClient.getPrice(ticker);
             if (!isValidPrice(res.price())) {
                 return Optional.empty();
             }
@@ -68,7 +69,7 @@ public class PriceService {
     * Returns cached price with above defined timeout, or looks up latest price otherwise
     */
     @Transactional
-    public PriceResponse getPrice(Long instrumentId){
+    public PricePersistedResponse getPrice(Long instrumentId){
         Instrument instrument = instrumentResolutionService.getById(instrumentId);
 
         if (instrument.getPriceUpdatedAt() != null &&
@@ -81,9 +82,9 @@ public class PriceService {
     }
 
     @Transactional
-    public PriceResponse forceLatestPrice(Instrument instrument) {
+    public PricePersistedResponse forceLatestPrice(Instrument instrument) {
         String ticker = instrument.getTicker();
-        PriceResponse res = priceLookupClient.getPrice(ticker);
+        PriceValueResponse res = priceLookupClient.getPrice(ticker);
 
         if (!isValidPrice(res.price())) {
             throw new InvalidPriceException("Retrieved price invalid for ticker '" + ticker + "'");
@@ -91,14 +92,14 @@ public class PriceService {
 
         instrument.setPrice(res.price().doubleValue());
         // Build the response from the instrument itself, not the raw
-        // provider response - res has no priceUpdatedAt (see
-        // PriceResponse's 1-arg constructor), while instrument.setPrice()
-        // just stamped a real one.
+        // provider response - res is a PriceValueResponse and has no
+        // priceUpdatedAt at all, while instrument.setPrice() just stamped
+        // a real one that toResponse() below picks up.
         return toResponse(instrument);
     }
 
-    private static PriceResponse toResponse(Instrument instrument) {
-        return new PriceResponse(
+    private static PricePersistedResponse toResponse(Instrument instrument) {
+        return new PricePersistedResponse(
                 BigDecimal.valueOf(instrument.getPrice()),
                 instrument.getPriceUpdatedAt()
         );
@@ -108,7 +109,7 @@ public class PriceService {
     * Allow for forced updates
      */
     @Transactional
-    public PriceResponse forceLatestPrice(Long instrumentId) {
+    public PricePersistedResponse forceLatestPrice(Long instrumentId) {
         Instrument instrument = instrumentResolutionService.getById(instrumentId);
         return forceLatestPrice(instrument);
     }

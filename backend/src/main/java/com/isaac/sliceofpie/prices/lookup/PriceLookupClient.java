@@ -1,7 +1,7 @@
 package com.isaac.sliceofpie.prices.lookup;
 
-import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PriceValueResponse;
 
 public interface PriceLookupClient {
-    PriceResponse getPrice(String ticker);
+    PriceValueResponse getPrice(String ticker);
 }

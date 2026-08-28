@@ -3,7 +3,8 @@ package com.isaac.sliceofpie.price;
 import com.isaac.sliceofpie.auth.AuthTestUtils;
 import com.isaac.sliceofpie.instrument.Instrument;
 import com.isaac.sliceofpie.instrument.InstrumentRepository;
-import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PriceValueResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PricePersistedResponse;
 import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,14 +70,14 @@ class PriceFlowTest {
     @Test
     void getPrice_returnsPrice_whenLookupSucceeds() {
         when(priceLookupClient.getPrice(ticker))
-                .thenReturn(new PriceResponse(new BigDecimal("158")));
+                .thenReturn(new PriceValueResponse(new BigDecimal("158")));
 
-        PriceResponse body = client.get()
+        PricePersistedResponse body = client.get()
                 .uri("/price?instrumentId=" + instrument.getId())
                 .header("Authorization", "Bearer " + token)
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(PriceResponse.class)
+                .expectBody(PricePersistedResponse.class)
                 .returnResult()
                 .getResponseBody();
 

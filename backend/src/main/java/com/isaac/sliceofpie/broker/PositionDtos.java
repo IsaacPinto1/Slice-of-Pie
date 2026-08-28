@@ -44,6 +44,6 @@ public class PositionDtos {
     // Normalized shape any BrokerClient implementation maps its provider's
     // holdings/positions response into, before PositionService ever sees a
     // provider-specific shape. Same "mapping happens at the edge" pattern
-    // as InstrumentDtos.InstrumentSearchResult / PriceDtos.PriceResponse.
+    // as InstrumentDtos.InstrumentSearchResult / PriceDtos.PriceValueResponse.
     public record BrokerHolding(String ticker, String name, BigDecimal quantity, BigDecimal costBasis) {}
 }
