@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getThesis } from "../api/thesis";
 import { forceLatestPrice } from "../api/price";
+import { formatRelativeTime } from "../utils/time";
 import ThesisEditor from "./ThesisEditor";
 
 // Minimum time between force-refresh clicks - mirrors WatchlistDetail's
@@ -66,6 +67,8 @@ export default function PositionDetail({ item }) {
     };
 
     const price = forcedPrice?.price ?? item.price;
+    const priceUpdatedAt = forcedPrice?.priceUpdatedAt ?? item.priceUpdatedAt;
+    const updatedLabel = formatRelativeTime(priceUpdatedAt);
     const marketValue = price != null ? Number(quantity) * Number(price) : null;
     // Same "0 cost basis reads as unknown, not -100%" rule as
     // PortfolioSidebar's percentChange - a position that predates cost
@@ -146,6 +149,14 @@ export default function PositionDetail({ item }) {
                     </svg>
                 </button>
                 <span className="position-refresh-label">Refresh price</span>
+                {updatedLabel && (
+                    <span
+                        className="price-updated-label"
+                        title={priceUpdatedAt ? new Date(priceUpdatedAt).toLocaleString() : undefined}
+                    >
+                        Updated {updatedLabel}
+                    </span>
+                )}
             </div>
 
             {loadingThesis ? (
