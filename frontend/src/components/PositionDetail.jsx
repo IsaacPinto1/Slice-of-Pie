@@ -8,17 +8,10 @@ import ThesisEditor from "./ThesisEditor";
 // same cooldown/reasoning.
 const FORCE_REFRESH_COOLDOWN_MS = 5000;
 
-// Focused/large view for a single held position, shown in the detail
-// panel once its sidebar card is selected. Unlike the old PositionItem,
-// this never fetches a price on load - `item.price` already came from
-// PositionItemResponse when the sidebar list loaded, so opening a
-// position is a pure render, not a network call. "Force update price" is
-// the one deliberate exception: it always hits the provider, but its
-// result is reported to Dashboard via onPriceUpdate rather than kept in
-// local state here - Dashboard's positions array is what both this
-// component's `item` prop and the sidebar are derived from, so writing
-// the refreshed price there is what keeps the two in sync (see
-// Dashboard.handlePositionPriceUpdate).
+// Expanded view for a position once selected from the sidebar. Never
+// feteches a price on load, unless the forced refresh is triggered. In
+// that case, the updated details are reported to the dashboard which feed back
+// to here
 export default function PositionDetail({ item, onPriceUpdate }) {
     const { instrumentId, ticker, name, quantity, price, priceUpdatedAt, costBasis } = item;
     const [thesis, setThesis] = useState("");

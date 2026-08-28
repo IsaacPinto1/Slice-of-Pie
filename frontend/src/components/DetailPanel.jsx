@@ -9,10 +9,7 @@ import WatchlistDetail from "./WatchlistDetail";
 //
 // The `key` on each detail component forces a clean remount when the
 // selected instrument changes, so per-item state (thesis, confirm-remove)
-// never leaks from one ticker to the next. Price itself isn't in that
-// list anymore - see onPositionPriceUpdate/onWatchlistPriceUpdate below,
-// which write a force-refreshed price back into Dashboard's positions/
-// watchlist arrays instead of holding it locally here.
+// never leaks from one ticker to the next. 
 export default function DetailPanel({
     selected,
     onRemoveWatchlistItem,
