@@ -29,10 +29,12 @@ public class PriceService {
     // How long a persisted price is considered fresh before getPrice() will
     // re-fetch it, and (via PriceRefreshScheduler.REFRESH_WINDOW_MINUTES)
     // how often the background job sweeps every instrument regardless of
-    // whether anyone's actively looking at it. Public so both call sites -
-    // and the frontend's staleness check, via staleAfterMinutes on
-    // PriceResponse - stay in lockstep with a single number instead of
-    // drifting apart.
+    // whether anyone's actively looking at it. Public so both call sites
+    // stay in lockstep with a single number instead of drifting apart.
+    // Not surfaced to the frontend: staleness is a backend-only concept
+    // now, enforced by keeping persisted prices fresh (getPrice()'s cache
+    // check + the background scheduler) rather than reported over the wire
+    // for the client to act on.
     public static final int STALE_AFTER_MINUTES = 60;
 
     public PriceService(PriceLookupClient priceLookupClient, InstrumentResolutionService instrumentResolutionService){
@@ -106,8 +108,7 @@ public class PriceService {
     private static PriceResponse toResponse(Instrument instrument) {
         return new PriceResponse(
                 BigDecimal.valueOf(instrument.getPrice()),
-                instrument.getPriceUpdatedAt(),
-                STALE_AFTER_MINUTES
+                instrument.getPriceUpdatedAt()
         );
     }
 

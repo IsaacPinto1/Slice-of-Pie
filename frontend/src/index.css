@@ -595,24 +595,6 @@ button.small {
   min-width: 20px;
 }
 
-/* Stale-price indicator - applied alongside price-value/sidebar-item-price/
-   position-metric-value wherever a price is shown, whenever
-   isPriceStale() (see utils/price.js) says it's older than the backend's
-   staleAfterMinutes. */
-.price-stale {
-  color: var(--warn, #b45309);
-}
-
-.stale-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-left: 6px;
-  border-radius: 50%;
-  background: var(--warn, #b45309);
-  vertical-align: middle;
-}
-
 .icon-button {
   display: inline-flex;
   align-items: center;

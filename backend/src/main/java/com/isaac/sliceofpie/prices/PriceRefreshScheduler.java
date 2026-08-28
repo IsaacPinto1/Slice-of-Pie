@@ -37,8 +37,9 @@ public class PriceRefreshScheduler {
 
     // Derived from PriceService.STALE_AFTER_MINUTES rather than kept as its
     // own independent constant, so the background refresh window and the
-    // on-demand staleness cutoff (and the value PriceResponse reports to
-    // the frontend as staleAfterMinutes) can never drift apart.
+    // on-demand staleness cutoff can never drift apart. Staleness itself
+    // isn't reported to the frontend anymore - this pair of numbers is how
+    // we keep persisted prices fresh enough that it stays a non-issue.
     // Public (not package-private, unlike e.g. InstrumentResolutionService's
     // MAX_SEARCH_RESULTS) because PriceRefreshSchedulerTest lives in
     // com.isaac.sliceofpie.price, not this class's com.isaac.sliceofpie.prices

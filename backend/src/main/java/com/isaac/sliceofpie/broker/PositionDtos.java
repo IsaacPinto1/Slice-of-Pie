@@ -1,7 +1,6 @@
 package com.isaac.sliceofpie.broker;
 
 import com.isaac.sliceofpie.instrument.Instrument;
-import com.isaac.sliceofpie.prices.PriceService;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -37,7 +36,6 @@ public class PositionDtos {
             BigDecimal price,
             // Mirrors WatchlistDtos.WatchlistItemResponse - see there for why.
             Instant priceUpdatedAt,
-            int staleAfterMinutes,
             BigDecimal costBasis
     ) {
         public static PositionItemResponse from(Position position) {
@@ -49,7 +47,6 @@ public class PositionDtos {
                     position.getQuantity(),
                     BigDecimal.valueOf(instrument.getPrice()),
                     instrument.getPriceUpdatedAt(),
-                    PriceService.STALE_AFTER_MINUTES,
                     position.getCostBasis()
             );
         }

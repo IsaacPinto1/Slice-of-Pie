@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getThesis } from "../api/thesis";
 import { forceLatestPrice } from "../api/price";
-import { isPriceStale } from "../utils/price";
 import ThesisEditor from "./ThesisEditor";
 
 // Minimum time between force-refresh clicks - mirrors WatchlistDetail's
@@ -55,14 +54,9 @@ export default function PositionDetail({ item }) {
         setForcing(true);
         try {
             const res = await forceLatestPrice(instrumentId);
-            // Widened to carry the forced response's priceUpdatedAt (and
-            // staleAfterMinutes), not just the raw number, so the staleness
-            // indicator reflects a forced refresh immediately instead of
-            // going stale from the moment it lands.
             setForcedPrice({
                 price: res.data.price,
                 priceUpdatedAt: res.data.priceUpdatedAt,
-                staleAfterMinutes: res.data.staleAfterMinutes,
             });
         } catch {
             alert("Error getting price");
@@ -72,7 +66,6 @@ export default function PositionDetail({ item }) {
     };
 
     const price = forcedPrice?.price ?? item.price;
-    const stale = isPriceStale(forcedPrice ?? item);
     const marketValue = price != null ? Number(quantity) * Number(price) : null;
     // Same "0 cost basis reads as unknown, not -100%" rule as
     // PortfolioSidebar's percentChange - a position that predates cost
@@ -99,12 +92,8 @@ export default function PositionDetail({ item }) {
                 </div>
                 <div className="position-metric">
                     <span className="position-metric-label">Price</span>
-                    <span
-                        className={`position-metric-value${stale ? " price-stale" : ""}`}
-                        title={stale ? "Price may be out of date" : undefined}
-                    >
+                    <span className="position-metric-value">
                         {price != null ? `$${price}` : "—"}
-                        {stale && <span className="stale-dot" aria-label="stale price" />}
                     </span>
                 </div>
                 <div className="position-metric">
