@@ -5,10 +5,7 @@ import java.time.Instant;
 
 public class PriceDtos {
 
-    // What a PriceLookupClient produces: just the number it read from the
-    // provider (see FinnhubPriceLookupClient). A lookup is a single stateless
-    // call out to a third party - it has no notion of when/whether that
-    // number gets persisted, so there's no priceUpdatedAt here.
+    // Just the number, returned by PriceLookupClient
     public record PriceValueResponse(BigDecimal price) {
         public static PriceValueResponse from(int number){
             return new PriceValueResponse(new BigDecimal(number));
@@ -18,10 +15,6 @@ public class PriceDtos {
         }
     }
 
-    // What PriceService returns once a price is persisted onto an
-    // Instrument (see PriceService.toResponse()). Every instance of this
-    // goes through that one path, so priceUpdatedAt is never null here -
-    // unlike PriceValueResponse, there's no raw/unpersisted variant to be
-    // backward-compatible with.
+    // Price + updated time, produced by PriceService and used on frontend
     public record PricePersistedResponse(BigDecimal price, Instant priceUpdatedAt) {}
 }

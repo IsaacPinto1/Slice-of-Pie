@@ -91,10 +91,7 @@ public class PriceService {
         }
 
         instrument.setPrice(res.price().doubleValue());
-        // Build the response from the instrument itself, not the raw
-        // provider response - res is a PriceValueResponse and has no
-        // priceUpdatedAt at all, while instrument.setPrice() just stamped
-        // a real one that toResponse() below picks up.
+        // Build the response from the instrument itself, so it has updated time
         return toResponse(instrument);
     }
 
