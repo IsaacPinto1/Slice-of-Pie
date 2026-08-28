@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.isaac.sliceofpie.instrument.Instrument;
 import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
 import com.isaac.sliceofpie.prices.PriceController;
-import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PriceValueResponse;
 import com.isaac.sliceofpie.prices.PriceService;
 import com.isaac.sliceofpie.prices.exception.PriceExceptionHandler;
 import com.isaac.sliceofpie.prices.exception.TickerNotFoundException;
@@ -67,7 +67,7 @@ class PriceControllerTest {
         Instrument pltr = new Instrument("PLTR", "Palantir", null);
         when(instrumentResolutionService.getById(1L)).thenReturn(pltr);
         when(priceLookupClient.getPrice("PLTR"))
-                .thenReturn(new PriceResponse(new BigDecimal("158")));
+                .thenReturn(new PriceValueResponse(new BigDecimal("158")));
 
         mockMvc.perform(get("/price").param("instrumentId", "1"))
                 .andExpect(status().isOk())
@@ -81,7 +81,7 @@ class PriceControllerTest {
         Instrument pltr = new Instrument("PLTR", "Palantir", null);
         when(instrumentResolutionService.getById(1L)).thenReturn(pltr);
         when(priceLookupClient.getPrice("PLTR"))
-                .thenReturn(new PriceResponse(new BigDecimal("-1")));
+                .thenReturn(new PriceValueResponse(new BigDecimal("-1")));
 
         mockMvc.perform(get("/price").param("instrumentId", "1"))
                 .andExpect(status().isBadGateway())
@@ -97,7 +97,7 @@ class PriceControllerTest {
         Instrument pltr = new Instrument("PLTR", "Palantir", null);
         when(instrumentResolutionService.getById(1L)).thenReturn(pltr);
         when(priceLookupClient.getPrice("PLTR"))
-                .thenReturn(new PriceResponse(null));
+                .thenReturn(new PriceValueResponse(null));
 
         mockMvc.perform(get("/price").param("instrumentId", "1"))
                 .andExpect(status().isBadGateway())

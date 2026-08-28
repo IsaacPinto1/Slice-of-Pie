@@ -65,7 +65,10 @@ export default function WatchlistDetail({ item, onRemove }) {
         setForcing(true);
         try {
             const res = await forceLatestPrice(instrumentId);
-            setForcedPrice(res.data.price);
+            setForcedPrice({
+                price: res.data.price,
+                priceUpdatedAt: res.data.priceUpdatedAt,
+            });
         } catch {
             alert("Error getting price");
         } finally {
@@ -73,7 +76,7 @@ export default function WatchlistDetail({ item, onRemove }) {
         }
     };
 
-    const price = forcedPrice ?? item.price;
+    const price = forcedPrice?.price ?? item.price;
 
     return (
         <div className="detail-card">

@@ -17,7 +17,9 @@ export default function SidebarItemCard({ item, active, onSelect }) {
         >
             <span className="sidebar-item-ticker">{item.ticker}</span>
             <span className="sidebar-item-stats">
-                <span className="sidebar-item-price">{formatPrice(item.price)}</span>
+                <span className="sidebar-item-price">
+                    {formatPrice(item.price)}
+                </span>
                 {item.percentChange != null && (
                     <span className={`sidebar-item-change ${item.percentChange >= 0 ? "positive" : "negative"}`}>
                         {formatPercentChange(item.percentChange)}

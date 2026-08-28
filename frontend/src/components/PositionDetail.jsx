@@ -54,7 +54,10 @@ export default function PositionDetail({ item }) {
         setForcing(true);
         try {
             const res = await forceLatestPrice(instrumentId);
-            setForcedPrice(res.data.price);
+            setForcedPrice({
+                price: res.data.price,
+                priceUpdatedAt: res.data.priceUpdatedAt,
+            });
         } catch {
             alert("Error getting price");
         } finally {
@@ -62,7 +65,7 @@ export default function PositionDetail({ item }) {
         }
     };
 
-    const price = forcedPrice ?? item.price;
+    const price = forcedPrice?.price ?? item.price;
     const marketValue = price != null ? Number(quantity) * Number(price) : null;
     // Same "0 cost basis reads as unknown, not -100%" rule as
     // PortfolioSidebar's percentChange - a position that predates cost

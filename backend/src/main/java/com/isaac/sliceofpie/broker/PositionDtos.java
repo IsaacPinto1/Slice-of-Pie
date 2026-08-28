@@ -3,6 +3,7 @@ package com.isaac.sliceofpie.broker;
 import com.isaac.sliceofpie.instrument.Instrument;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 // Single DTO file for the whole broker/positions feature - status,
@@ -12,15 +13,7 @@ public class PositionDtos {
 
     public record BrokerStatusResponse(boolean connected) {}
 
-    // Cheap, non-throwing counterpart to BrokerAccessGuard#assertAllowed -
-    // just an env-var Set#contains check, no external call. Meant to be
-    // fetched alongside /me and /watchlist on initial load so the frontend
-    // knows whether to render the Positions section at all before it ever
-    // touches /broker/status (which can be slow/flaky - it calls out to
-    // the actual provider once connected). Deliberately a plain 200 with a
-    // boolean rather than the 404-if-not-allowed treatment the other
-    // broker routes use - see BrokerAccessGuard's javadoc for why those
-    // hide behind a 404, and PositionController for why this one doesn't.
+    // Simple check if the user is allowed to use positions feature
     public record BrokerAllowedResponse(boolean allowed) {}
 
     public record PositionItemResponse(
@@ -28,11 +21,8 @@ public class PositionDtos {
             String ticker,
             String name,
             BigDecimal quantity,
-            // Read straight off the Instrument row instead of the live
-            // provider - see WatchlistDtos.WatchlistItemResponse.price for
-            // the full reasoning (kept once there since both DTOs pull it
-            // the same way).
-            BigDecimal price,
+            BigDecimal price, // Dumb db lookup
+            Instant priceUpdatedAt,
             BigDecimal costBasis
     ) {
         public static PositionItemResponse from(Position position) {
@@ -43,6 +33,7 @@ public class PositionDtos {
                     instrument.getName(),
                     position.getQuantity(),
                     BigDecimal.valueOf(instrument.getPrice()),
+                    instrument.getPriceUpdatedAt(),
                     position.getCostBasis()
             );
         }
@@ -53,6 +44,6 @@ public class PositionDtos {
     // Normalized shape any BrokerClient implementation maps its provider's
     // holdings/positions response into, before PositionService ever sees a
     // provider-specific shape. Same "mapping happens at the edge" pattern
-    // as InstrumentDtos.InstrumentSearchResult / PriceDtos.PriceResponse.
+    // as InstrumentDtos.InstrumentSearchResult / PriceDtos.PriceValueResponse.
     public record BrokerHolding(String ticker, String name, BigDecimal quantity, BigDecimal costBasis) {}
 }

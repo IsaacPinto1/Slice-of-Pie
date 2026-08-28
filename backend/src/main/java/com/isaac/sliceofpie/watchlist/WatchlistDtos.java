@@ -12,15 +12,8 @@ public class WatchlistDtos {
             Long instrumentId,
             String ticker, // Ok to store this here, since it is not stored but retrieved from the instrument
             String name,
-            // Last price PriceService persisted onto the Instrument row, not
-            // a live provider lookup - same "read what's already in the db"
-            // shape as the rest of this DTO. Lets a list of items render
-            // ticker + price straight from GET /watchlist (or /positions),
-            // instead of the client following up with a GET /price call per
-            // item on every load/refresh. Still just a snapshot: a client
-            // that wants the guaranteed-latest number for one focused item
-            // can hit /price or /price/force for that item specifically.
-            BigDecimal price,
+            BigDecimal price, // Dumb db lookup so can render instantly
+            Instant priceUpdatedAt, // Lets frontend show how recent the price is
             Instant createdAt
     ) {
         public static WatchlistItemResponse from(WatchlistItem item) {
@@ -30,6 +23,7 @@ public class WatchlistDtos {
                     instrument.getTicker(),
                     instrument.getName(),
                     BigDecimal.valueOf(instrument.getPrice()),
+                    instrument.getPriceUpdatedAt(),
                     item.getCreatedAt()
             );
         }

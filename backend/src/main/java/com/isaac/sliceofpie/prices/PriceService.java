@@ -12,7 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.isaac.sliceofpie.instrument.Instrument;
 import com.isaac.sliceofpie.instrument.InstrumentResolutionService;
-import com.isaac.sliceofpie.prices.PriceDtos.PriceResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PriceValueResponse;
+import com.isaac.sliceofpie.prices.PriceDtos.PricePersistedResponse;
 import com.isaac.sliceofpie.prices.exception.InvalidPriceException;
 import com.isaac.sliceofpie.prices.lookup.PriceLookupClient;
 
@@ -26,7 +27,8 @@ public class PriceService {
 
     private final InstrumentResolutionService instrumentResolutionService;
 
-    private final int PRICE_LIFETIME_HOURS = 1;
+    // Source of truth for how often prices are updated automatically (separate to forced lookups)
+    public static final int STALE_AFTER_MINUTES = 60;
 
     public PriceService(PriceLookupClient priceLookupClient, InstrumentResolutionService instrumentResolutionService){
         this.priceLookupClient = priceLookupClient;
@@ -52,7 +54,7 @@ public class PriceService {
     */
     public Optional<BigDecimal> tryFetchPrice(String ticker) {
         try {
-            PriceResponse res = priceLookupClient.getPrice(ticker);
+            PriceValueResponse res = priceLookupClient.getPrice(ticker);
             if (!isValidPrice(res.price())) {
                 return Optional.empty();
             }
@@ -64,39 +66,47 @@ public class PriceService {
     }
 
     /*
-    * Returns cached price with above defined hour timeout, or looks up latest price otherwise
+    * Returns cached price with above defined timeout, or looks up latest price otherwise
     */
     @Transactional
-    public PriceResponse getPrice(Long instrumentId){
+    public PricePersistedResponse getPrice(Long instrumentId){
         Instrument instrument = instrumentResolutionService.getById(instrumentId);
 
         if (instrument.getPriceUpdatedAt() != null &&
-            Duration.between(instrument.getPriceUpdatedAt(), Instant.now()).compareTo(Duration.ofHours(PRICE_LIFETIME_HOURS )) < 0) {
+            Duration.between(instrument.getPriceUpdatedAt(), Instant.now()).compareTo(Duration.ofMinutes(STALE_AFTER_MINUTES)) < 0) {
 
-            return PriceResponse.from(instrument.getPrice());
+            return toResponse(instrument);
         }
 
         return forceLatestPrice(instrument);
     }
 
     @Transactional
-    public PriceResponse forceLatestPrice(Instrument instrument) {
+    public PricePersistedResponse forceLatestPrice(Instrument instrument) {
         String ticker = instrument.getTicker();
-        PriceResponse res = priceLookupClient.getPrice(ticker);
+        PriceValueResponse res = priceLookupClient.getPrice(ticker);
 
         if (!isValidPrice(res.price())) {
             throw new InvalidPriceException("Retrieved price invalid for ticker '" + ticker + "'");
         }
 
         instrument.setPrice(res.price().doubleValue());
-        return res;
+        // Build the response from the instrument itself, so it has updated time
+        return toResponse(instrument);
+    }
+
+    private static PricePersistedResponse toResponse(Instrument instrument) {
+        return new PricePersistedResponse(
+                BigDecimal.valueOf(instrument.getPrice()),
+                instrument.getPriceUpdatedAt()
+        );
     }
 
     /*
     * Allow for forced updates
      */
     @Transactional
-    public PriceResponse forceLatestPrice(Long instrumentId) {
+    public PricePersistedResponse forceLatestPrice(Long instrumentId) {
         Instrument instrument = instrumentResolutionService.getById(instrumentId);
         return forceLatestPrice(instrument);
     }
