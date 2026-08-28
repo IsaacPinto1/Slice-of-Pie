@@ -5,14 +5,14 @@ stale state (like Robinhood goes grey) until the last_updated_at time is recent 
 last SCHEDULED_TIME refresh window)
 
 View position -> refresh price -> click off -> go back to position doesn't show the updated price,
-but upon refresh it's updated
+but upon refresh it's updated. Same thing with the staleness indicator, and the % change.
+These details should update while persisting it however the objects are persisted on the frontend,
+and should reorder the side list if necessary
 
 List should scroll relative to the thesis
 
 Prices go stale if backend server is down (scheduler doesn't run) - need to streamline
 how prices get updated (on watchlist add, on position sync, on login, etc.)
-
-Refreshing price should refresh % change
 
 Should be able to search watchlist/positions
 
